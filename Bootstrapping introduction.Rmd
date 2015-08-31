@@ -1,0 +1,135 @@
+---
+title: "A Gentle Introduction to Bootstrapping"
+output: html_document
+---
+
+In the previous post, I explained the general principles behind the **standard error of the mean** (or **SEM**). The idea underlying the SEM is that you take repeated samples from the population of interest, and take the standard deviation of the means of these samples. Formulas for the SEM are available for each distribution, and are robust _if your data meets the assumptions of that distribution._
+
+## What if I'm not sure if my data meets the assumptions of a distribution?
+
+You might have a case where the true population distribution of your sample doesn't meet the assumptions of the closest appropriate distribution. For example, you might be interested in describing the mean levels of depression in a population, which is naturally positively skewed (i.e., most people in a population have no or low scores on measures of depression):
+
+```{r}
+require(fGarch)
+depression <- rsnorm(100, mean = 5, sd = 2, xi = 1.5)
+
+
+```
+    
+You might have been thinking, "Why would I bootstrap my SEM? It is pretty simple to calculate the SEM without all of these complicated simulations!" Well, bootstrapping is a great way of calculating statistics such as standard errors and confidence intervals when your data don't meet model assumptions. For example, your data may have significant skewness or outliers. In this case, bootstrapping gives a more accurate, empirically derived estimate of standard error. Bootstrapping can also be useful for calculating standard errors and confidence intervals on things that are mathematically complicated to compute directly (such as the standard error of the median).
+
+
+## What if I only have one sample?
+
+Obviously the above is more of a thought exercise than anything. In real life, we don't have the population distribution, and we also usually don't have the luxury of taking multiple samples. In what case, what do we do? A way is to **bootstrap** the SEM using our sample. Bootstrapping involves basically the same steps as above, except instead of sampling from the population distribution, we resample from our sample distribution.
+
+Let's assume we've taken a sample of page views over a 30 day sample:
+```{r}
+# Setting seed and generating a single sample
+set.seed(567)
+sample <- rpois(100, lambda = 220)
+
+# Plotting histogram of sample of daily page views
+g1 <- ggplot(data=as.data.frame(sample), aes(sample)) + 
+        geom_histogram(aes(y = ..density..), binwidth = 6, 
+                 col = barlines, 
+                 fill = barfill) + 
+        xlab("Number of page views per day") + 
+        ylab("Density") + 
+        theme_bw() + 
+        ggtitle("Sample distribution of page views over 30 days") + 
+        theme(plot.title = element_text(lineheight=.8, face="bold"))
+
+print(g1)
+```
+
+The mean of this distribution is `r round(mean(sample), 2)` page views per day, which is pretty much the population mean.
+
+To create a bootstrapped distribution of sample means, all we need to do is take repeated samples from this sample distribution _with replacement_ and take their means. The reason we must do this with replacement is because if we have a sample distribution of size, say 30, and we take a sample from this of size 30, we will just end up with the original sample! Importantly, this process rests on the assumption that our sample is a pretty accurate representation of our sample. We'll cover this point at the end of the blog post.
+
+So let's do this in R. We will take our sample of 30 days of page views and take 1,000 samples from this with replacement.
+
+```{r}
+set.seed(567)
+r_mn_vector <- NULL
+resample_frame <- data.frame(row.names = seq(from = 1, to = 30, by = 1))
+for (i in 1 : 1000) {
+    s <- sample(sample, 30, replace = TRUE)
+    resample_frame <- cbind(resample_frame, s)
+    r_mn_vector <- c(r_mn_vector, mean(s))
+}
+
+names(resample_frame) <- paste0("n", seq(from = 1, to = 1000, by = 1))
+```
+
+As with sampling from the population, we can see we get variability in our estimate of the population mean from sample to sample. For example, the mean in resample 1 is `r round(mean(resample_frame$n1))`, and the mean from resample 2 is `r round(mean(resample_frame$n2))`.
+
+```{r, message = FALSE, fig.width = 13}
+g6 <- ggplot(data=resample_frame, aes(resample_frame$n1)) + 
+        geom_histogram(aes(y = ..density..), 
+                       binwidth = 5, fill = barfill, colour = barlines) +
+        xlab("Sample heights") +
+        ylab("Density") +
+        theme_bw() +
+        ggtitle("Sample 1") + 
+        theme(plot.title = element_text(lineheight=1.1, face="bold"))
+
+mean1 <- data.frame(Means="Theoretical mean", vals = 220)
+mean2 <- data.frame(Means="Sample mean", vals = mean(resample_frame$n1))
+means <- rbind(mean1, mean2)
+                
+g6 <- g6 + geom_vline(data=means, aes(xintercept=vals, linetype = Means, 
+                             colour = Means), size = 1, show_guide = TRUE) + 
+      scale_color_manual(values=c("Theoretical mean" = line1, "Sample mean" = line2)) +
+      theme(legend.position="none")
+            
+g7 <- ggplot(data=resample_frame, aes(resample_frame$n2)) + 
+        geom_histogram(aes(y = ..density..), 
+                       binwidth = 5, fill = barfill, colour = barlines) +
+        xlab("Sample heights") +
+        ylab("Density") +
+        theme_bw() +
+        ggtitle("Sample 2") + 
+        theme(plot.title = element_text(lineheight=1.1, face="bold"))
+
+mean1 <- data.frame(Means="Theoretical mean", vals = 220)
+mean2 <- data.frame(Means="Sample mean", vals = mean(resample_frame$n2))
+means <- rbind(mean1, mean2)
+                
+g7 <- g7 + geom_vline(data=means, aes(xintercept=vals, linetype = Means, 
+                             colour = Means), size = 1, show_guide = TRUE) + 
+      scale_color_manual(values=c("Theoretical mean" = line1, "Sample mean" = line2)) +
+      theme(legend.position="none")
+
+grid.arrange(g6, g7, nrow = 1, ncol = 2)
+```
+
+As with the means of the samples drawn from the population mean, the resamples drawn from the sample mean also approximate the normal distribution:
+
+```{r, fig.width=15}
+g8 <- ggplot(data=as.data.frame(r_mn_vector), aes(r_mn_vector)) + 
+        geom_histogram(aes(y = ..density..), binwidth = 1, 
+                 col = barlines, 
+                 fill = barfill) + 
+        xlab("Mean of each sample") + 
+        ylab("Density") + 
+        theme_bw() + 
+        ggtitle("Distribution of Means of 1,000 Samples") + 
+        theme(plot.title = element_text(lineheight=.8, face="bold")) + 
+        geom_line(aes(y = ..density.., colour = "Empirical"), stat = "density") + 
+        stat_function(fun = dnorm, aes(colour = "Normal"), 
+                    arg = list(mean = 220, sd = sd(mn_vector))) + 
+        scale_colour_manual(name = "Density", values = c(line1, line2))
+
+print(g8)
+```
+
+The bootstrapped SEM using 1,000 resamplings was `r round(sd(r_mn_vector), 2)`, which is extremely close to the SEM derived from sampling from the population (`r round(sd(mn_vector), 2)`). This is because the sample we took of daily page views was a good representation of the population.
+
+
+## How do I know if my sample represents my population?
+
+Choosing a good sample is less about number crunching and more about study design. Depending on the population of interest, it can be a bit tricky. Important elements of representative sampling include:  
+1. **Sample size:** The trick to choosing a large enough sample size is making sure you gain sufficient information about the patterns you are trying to describe. For example, if we had only sampled 10 days, would that have been too small to avoid sampling extreme values by chance that threw off our estimate of the mean? If the event we were trying to sample was very rare (e.g., 1 event per 100 days), would sampling 30 days be long enough to assess its mean occurrence? However, the opposite consideration often occurs with sample size, where taking samples that are much larger than is needed is also undesirable as there may be time, monetary or even ethical reasons to limit the number of observations collected. For example, the company that asked us to assess page views would likely be unhappy if we spent 100 days collecting information on mean daily page views when the same question could be reliably answered from 30 days of data collection. There is a whole collection of methods that help you decide on the correct sample size (called **power**) which are beyond the scope of this already long blog post.
+2. **Representativeness:** Another consideration is that we must make the data we collect a good reflection of the population we are trying to describe. Say that I tried to collect my data after a new campaign was launched advertising the website. This would not be a representative sample of the usual mean page views per day as page views are likely to be higher at that time.
+3. **Measurement:** A final step in gaining a representative sample is remembering there may be a gap between a _concept_ of interest and the _method_ you need to use to measure it. In our example, there is likely to be little gap between what we are trying to measure (number of page views) and the method (a counter of page visitors). However, what if we don't actually care about page views per say, but the popularity of a website? Would it be reasonable to say that websites with higher mean page views have greater popularity?
