@@ -3,13 +3,13 @@ title: 'A Gentle Introduction to Standard Error and Bootstrapping'
 output: html_document
 ---
 
-Many of the points and code in this blog post are adapted from the excellent Statistical Inference [link] unit on Coursera by Brian Caffo, Jeff Leek and Roger Peng. This course gives a far more comprehensive coverage of this material and is highly recommended.
+Many of the points and code in this blog post are adapted from the excellent [Statistical Inference](https://www.coursera.org/course/statinference) unit on Coursera by Brian Caffo, Jeff Leek and Roger Peng. This course gives a far more comprehensive coverage of this material and is highly recommended.
 
 ## What is the standard error of an estimate?
 
 Suppose you want to assess the average number of page views a website has per day. How do you measure this? Well, the most logical thing to do is to take a representative sample e.g., a sequence of 30 days, record the number of page views, and take their mean. However, how do you know if this is a good estimate the true daily average number of page views? How do you know if a sample of this size is big enough?
 
-The **standard error** of any statistic, is a measure of the amount of error in the sample statistic with respect to the true population value. In this case, the standard error of the mean would be an estimate of how accurately the daily page views of our sample reflects the true population mean. The smaller the standard error of the mean, the better the sample estimate reflects the true population value.
+The **standard error** of any statistic is a measure of the amount of error in the sample statistic with respect to the true population value. In this case, the standard error of the mean would be an estimate of how accurately the daily page views of our sample reflects the true population mean. The smaller the standard error of the mean, the better the sample estimate reflects the true population value.
 
 ## Why should I care about the standard error?
 
@@ -19,7 +19,7 @@ It is tempting, once you get into applying statistics to a sample, to forget you
 
 One way of assessing the standard error of the mean is to sample repeated from the population, calculate the mean for each sample, and plot the distribution of these means. Each sample is expected to be a different representation of the population, with different estimates of the median in each sample. 
 
-Imagine if you were working for a company that wanted to know how many page views their website received. One thing you could do is take a large number, say 1,000, samples of 30 day periods each. Instead of doing this (because it would take about 82 years...), let's pretend we already know the population rate (220 page views per day) and use this to simulate this result in R:
+Imagine if you were working for a company that wanted to know how many page views their website received. One thing you could do is take a large number, say 1,000, samples of 30 day periods each. Instead of doing this (because it would take about 82 years...), let's pretend we already know the population rate (220 page views per day, or a Poisson distribution with $\lambda$ = 220/day) and use this to simulate this result in R:
 
 ```{r, message = FALSE}
 rm(list = ls())         # Clear the workspace
@@ -36,21 +36,15 @@ names(sample_frame) <- paste0("n", seq(from = 1, to = 1000, by = 1))
 
 For example, your first sample has a mean rate of `r round(mn_vector[1])` page views per day, and the second sample has a mean rate of `r round(mn_vector[2])` page views per day. Their distributions are demonstrated below:
 
-Dark blue: #152C59 / 4E7A9E
-Light blue: #294FB1 / 869EB1
-Brown: #7A4705 / 8B5462
-Orange: #C14704 / 804B0C
-
-"#152C59",
-	"#DFDBBE",
-	"#AD9C89",
-	"#61584C"
-
 ```{r, message = FALSE, fig.width = 13}
 require(ggplot2); require(gridExtra)
+barfill <- "#6baed6"
+barlines <- "#2171b5"
+line1 <- "black"
+line2 <- "#FF0000"
 g1 <- ggplot(data=sample_frame, aes(sample_frame$n1)) + 
         geom_histogram(aes(y = ..density..), 
-                       binwidth = 4, fill="#6baed6", colour="#2171b5") +
+                       binwidth = 4, fill = barfill, colour = barlines) +
         xlab("Sample heights") +
         ylab("Density") +
         theme_bw() +
@@ -63,12 +57,12 @@ means <- rbind(mean1, mean2)
                 
 g1 <- g1 + geom_vline(data=means, aes(xintercept=vals, linetype = Means, 
                              colour = Means), size = 1, show_guide = TRUE) + 
-      scale_color_manual(values=c("Theoretical mean"="black", "Sample mean"="#021645")) +
+      scale_color_manual(values=c("Theoretical mean" = line1, "Sample mean" = line2)) +
       theme(legend.position="none")
             
 g2 <- ggplot(data=sample_frame, aes(sample_frame$n2)) + 
         geom_histogram(aes(y = ..density..), 
-                       binwidth = 4, fill="#6baed6", colour="#2171b5") +
+                       binwidth = 4, fill = barfill, colour = barlines) +
         xlab("Sample heights") +
         ylab("Density") +
         theme_bw() +
@@ -81,7 +75,7 @@ means <- rbind(mean1, mean2)
                 
 g2 <- g2 + geom_vline(data=means, aes(xintercept=vals, linetype = Means, 
                              colour = Means), size = 1, show_guide = TRUE) + 
-      scale_color_manual(values=c("Theoretical mean"="black", "Sample mean"="#021645")) +
+      scale_color_manual(values=c("Theoretical mean" = line1, "Sample mean" = line2)) +
       theme(legend.position="none")
 
 grid.arrange(g1, g2, nrow = 1, ncol = 2)
@@ -96,8 +90,8 @@ This can be seen in the histogram of the means of each sample:
 ```{r, message = FALSE, fig.width=11}
 g3 <- ggplot(data=as.data.frame(mn_vector), aes(mn_vector)) + 
         geom_histogram(aes(y = ..density..), binwidth = 1, 
-                 col = "black", 
-                 fill = "#4797E5") + 
+                 col = barlines, 
+                 fill = barfill) + 
         xlab("Mean of each sample") + 
         ylab("Density") + 
         theme_bw() + 
@@ -106,7 +100,7 @@ g3 <- ggplot(data=as.data.frame(mn_vector), aes(mn_vector)) +
         geom_line(aes(y = ..density.., colour = "Empirical"), stat = "density") + 
         stat_function(fun = dnorm, aes(colour = "Normal"), 
                     arg = list(mean = 220, sd = sd(mn_vector))) + 
-        scale_colour_manual(name = "Density", values = c("black", "red"))
+        scale_colour_manual(name = "Density", values = c(line1, line2))
 
 print(g3)
 ```
@@ -118,8 +112,8 @@ In our case, taking a sample of 30 days gives us a pretty accurate assessment of
 ```{r, fig.width=11}
 g4 <- ggplot(data=as.data.frame(mn_vector), aes(mn_vector)) + 
         geom_histogram(aes(y = ..density..), binwidth = 1, 
-                 col = "black", 
-                 fill = "#4797E5") + 
+                 col = barlines, 
+                 fill = barfill) + 
         xlab("Mean of each sample") + 
         ylab("Density") + 
         theme_bw() + 
@@ -136,30 +130,32 @@ sems <- rbind(sem1, sem2)
                 
 g4 <- g4 + geom_vline(data=sems, aes(xintercept=vals, linetype = SEMs, 
                             colour = SEMs), size = 1, show_guide = TRUE) + 
-      scale_color_manual(values=c("+/- 1 SEM"="black", 
-                                  "+/- 2 SEMs"="red"))
+      scale_color_manual(values=c("+/- 1 SEM" = line1, 
+                                  "+/- 2 SEMs" = line1))
 
 print(g4)
 ```
 
 ## What if I only have one sample?
 
-Obviously the above is more of a thought exercise than anything - in real life, we of course don't have the population distribution, and we also usually don't have the luxury of taking multiple samples. In what case, what do we do? One alternative is to simply calculate the sample error of the mean using the formula: [insert Poisson SEM formula]. However, an alternative is to _bootstrap_ using our population sample. Bootstrapping involves basically the same steps as above, except instead of sampling from the population distribution, we sample from our sample distribution.
+Obviously the above is more of a thought exercise than anything. In real life, we don't have the population distribution, and we also usually don't have the luxury of taking multiple samples. In what case, what do we do? A way is to _bootstrap_ using our population sample. Bootstrapping involves basically the same steps as above, except instead of sampling from the population distribution, we sample from our sample distribution.
 
-Let's assume we've recorded the page views of our website for a 30 day period:
+Let's assume we've taken a sample of page views over a 30 day sample:
 ```{r}
 set.seed(567)
 sample <- rpois(30, lambda = 220)
 
 g5 <- ggplot(data=as.data.frame(sample), aes(sample)) + 
         geom_histogram(aes(y = ..density..), binwidth = 6, 
-                 col = "black", 
-                 fill = "#4797E5") + 
+                 col = barlines, 
+                 fill = barfill) + 
         xlab("Number of page views per day") + 
         ylab("Density") + 
         theme_bw() + 
         ggtitle("Sample distribution of page views over 30 days") + 
         theme(plot.title = element_text(lineheight=.8, face="bold"))
+
+print(g5)
 ```
 
 The mean of this distribution is `r round(mean(sample))` page views per day, which is pretty much the population mean (which we would expect given the tight standard error around the mean we saw earlier).
@@ -170,24 +166,23 @@ So let's do this in R. We will take our sample of 30 days of page views and take
 
 ```{r}
 set.seed(567)
-mn_vector <- NULL
+r_mn_vector <- NULL
 resample_frame <- data.frame(row.names = seq(from = 1, to = 30, by = 1))
 for (i in 1 : 1000) {
     s <- sample(sample, 30, replace = TRUE)
     resample_frame <- cbind(resample_frame, s)
-    mn_vector <- c(mn_vector, mean(s))
+    r_mn_vector <- c(r_mn_vector, mean(s))
 }
 
 names(resample_frame) <- paste0("n", seq(from = 1, to = 1000, by = 1))
 ```
 
-As with sampling from the population, we can see we get variability in our estimate of the population mean from sample to sample. For example, the mean in resample 1 is `r round(mean(resample_frame$n1))`, and the mean from resample 2 is `r round(mean(resample_frame$n2))`
+As with sampling from the population, we can see we get variability in our estimate of the population mean from sample to sample. For example, the mean in resample 1 is `r round(mean(resample_frame$n1))`, and the mean from resample 2 is `r round(mean(resample_frame$n2))`.
 
 ```{r, message = FALSE, fig.width = 13}
-require(ggplot2); require(gridExtra)
-g1 <- ggplot(data=resample_frame, aes(resample_frame$n1)) + 
+g6 <- ggplot(data=resample_frame, aes(resample_frame$n1)) + 
         geom_histogram(aes(y = ..density..), 
-                       binwidth = 5, fill="#4797E5", colour="black") +
+                       binwidth = 5, fill = barfill, colour = barlines) +
         xlab("Sample heights") +
         ylab("Density") +
         theme_bw() +
@@ -198,14 +193,14 @@ mean1 <- data.frame(Means="Theoretical mean", vals = 220)
 mean2 <- data.frame(Means="Sample mean", vals = mean(resample_frame$n1))
 means <- rbind(mean1, mean2)
                 
-g1 <- g1 + geom_vline(data=means, aes(xintercept=vals, linetype = Means, 
+g6 <- g6 + geom_vline(data=means, aes(xintercept=vals, linetype = Means, 
                              colour = Means), size = 1, show_guide = TRUE) + 
-      scale_color_manual(values=c("Theoretical mean"="black", "Sample mean"="red")) +
+      scale_color_manual(values=c("Theoretical mean" = line1, "Sample mean" = line2)) +
       theme(legend.position="none")
             
-g2 <- ggplot(data=resample_frame, aes(resample_frame$n2)) + 
+g7 <- ggplot(data=resample_frame, aes(resample_frame$n2)) + 
         geom_histogram(aes(y = ..density..), 
-                       binwidth = 5, fill="#4797E5", colour="black") +
+                       binwidth = 5, fill = barfill, colour = barlines) +
         xlab("Sample heights") +
         ylab("Density") +
         theme_bw() +
@@ -216,19 +211,68 @@ mean1 <- data.frame(Means="Theoretical mean", vals = 220)
 mean2 <- data.frame(Means="Sample mean", vals = mean(resample_frame$n2))
 means <- rbind(mean1, mean2)
                 
-g2 <- g2 + geom_vline(data=means, aes(xintercept=vals, linetype = Means, 
+g7 <- g7 + geom_vline(data=means, aes(xintercept=vals, linetype = Means, 
                              colour = Means), size = 1, show_guide = TRUE) + 
-      scale_color_manual(values=c("Theoretical mean"="black", "Sample mean"="red")) +
+      scale_color_manual(values=c("Theoretical mean" = line1, "Sample mean" = line2)) +
       theme(legend.position="none")
 
-grid.arrange(g1, g2, nrow = 1, ncol = 2)
+grid.arrange(g6, g7, nrow = 1, ncol = 2)
 ```
 
 As with the means of the samples drawn from the population mean, the resamples drawn from the sample mean also approximate the normal distribution:
 
+```{r, fig.width=15}
+g8 <- ggplot(data=as.data.frame(r_mn_vector), aes(r_mn_vector)) + 
+        geom_histogram(aes(y = ..density..), binwidth = 1, 
+                 col = barlines, 
+                 fill = barfill) + 
+        xlab("Mean of each sample") + 
+        ylab("Density") + 
+        theme_bw() + 
+        ggtitle("Distribution of Means of 1,000 Samples") + 
+        theme(plot.title = element_text(lineheight=.8, face="bold")) + 
+        geom_line(aes(y = ..density.., colour = "Empirical"), stat = "density") + 
+        stat_function(fun = dnorm, aes(colour = "Normal"), 
+                    arg = list(mean = 220, sd = sd(mn_vector))) + 
+        scale_colour_manual(name = "Density", values = c(line1, line2))
 
+print(g8)
+```
+
+The bootstrapped SEM using 1,000 resamplings was `r round(sd(r_mn_vector), 2)`, which is extremely close to the SEM derived from sampling from the population (`r round(sd(mn_vector), 2)`). This is because the sample we took of daily page views was a good representation of the population.
+
+## Why would I bootstrap instead of simply calculating the SEM?
+
+You might have been thinking, "Why would I bootstrap my SEM? It is pretty simple to calculate the SEM without all of these complicated simulations!" Well, bootstrapping is a great way of calculating information such as standard errors and confidence intervals when your data do not meet the assumptions of the distribution you are working with. For example, you might have outliers that would massively bias your standard error (and also your mean!) if you calculated these parameters directly from the sample rather than bootstrapping them.
+
+```{r}
+sample_outlier <- c(sample, 300)
+sample_no_outlier <- c(sample, 221)
+
+sem_outlier <- sd(sample_outlier) / sqrt(31)
+sem_no_outlier <- sd(sample_no_outlier) / sqrt(31)
+
+set.seed(567)
+r_mn_vector <- NULL
+for (i in 1 : 10000) {
+    s <- sample(sample_outlier, 30, replace = TRUE)
+    r_mn_vector <- c(r_mn_vector, mean(s))
+}
+
+stat<-function(x,i){mean(x[i])}
+boot.out<-boot(data=sample_outlier, statistic=stat, R=1000)
+boot.ci(boot.out, conf = 0.68)
+
+stat<-function(x,i){mean(x[i])}
+boot.out<-boot(data=sample_no_outlier, statistic=stat, R=1000)
+boot.ci(boot.out, conf = 0.68)
+```
 
 ## How do I know if my sample represents my population?
 
-## Why would I bootstrap instead of simply calculating the SEM?
+Choosing a good sample is less about number crunching and more about study design. Depending on the population of interest, it can be a bit tricky. Important elements of representative sampling include:  
+1. **Sample size:** The trick to choosing a large enough sample size is making sure you gain sufficient information about the patterns you are trying to describe. For example, if we had only sampled 10 days, would that have been too small to avoid sampling extreme values by chance that threw off our estimate of the mean? If the event we were trying to sample was very rare (e.g., 1 event per 100 days), would sampling 30 days be long enough to assess its mean occurrence? However, the opposite consideration often occurs with sample size, where taking samples that are much larger than is needed is also undesirable as there may be time, monetary or even ethical reasons to limit the number of observations collected. For example, the company that asked us to assess page views would likely be unhappy if we spent 100 days collecting information on mean daily page views when the same question could be reliably answered from 30 days of data collection. There is a whole collection of methods that help you decide on the correct sample size (called **power**) which are beyond the scope of this already long blog post.
+2. **Representativeness:** Another consideration is that we must make the data we collect a good reflection of the population we are trying to describe. Say that I tried to collect my data after a new campaign was launched advertising the website. This would not be a representative sample of the usual mean page views per day as page views are likely to be higher at that time.
+3. **Measurement:** A final step in gaining a representative sample is remembering there may be a gap between a _concept_ of interest and the _method_ you need to use to measure it. In our example, there is likely to be little gap between what we are trying to measure (number of page views) and the method (a counter of page visitors). However, what if we don't actually care about page views per say, but the popularity of a website? Would it be reasonable to say that websites with higher mean page views have greater popularity?
+
 
