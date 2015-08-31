@@ -9,26 +9,48 @@ In the previous post, I explained the general principles behind the **standard e
 
 You might have a case where the true population distribution of your sample doesn't meet the assumptions of the closest appropriate distribution. For example, you might be interested in describing the mean levels of depression in a population, which is naturally positively skewed (i.e., most people in a population have no or low scores on measures of depression):
 
-```{r}
+```{r, message=FALSE}
 require(fGarch)
-depression <- rsnorm(100, mean = 5, sd = 2, xi = 1.5)
+set.seed(567)
+depression <- rsnorm(100, mean = 4, sd = 1, xi = 3)
+```
 
+```{r, message=FALSE, echo=FALSE}
+require(ggplot2); require(gridExtra)
 
+barfill <- "#6baed6"
+barlines <- "#2171b5"
+line1 <- "black"
+line2 <- "#FF0000"
+
+g1 <- ggplot(data=as.data.frame(depression), aes(depression)) + 
+        geom_histogram(aes(y = ..density..), binwidth = .5, 
+                 col = barlines, 
+                 fill = barfill) + 
+        xlab("Depression scores") + 
+        ylab("Density") + 
+        theme_bw() + 
+        ggtitle("Distribution of Scores on a Depression Scale") + 
+        theme(plot.title = element_text(lineheight=.8, face="bold"))
+        
+print(g1)
 ```
     
-You might have been thinking, "Why would I bootstrap my SEM? It is pretty simple to calculate the SEM without all of these complicated simulations!" Well, bootstrapping is a great way of calculating statistics such as standard errors and confidence intervals when your data don't meet model assumptions. For example, your data may have significant skewness or outliers. In this case, bootstrapping gives a more accurate, empirically derived estimate of standard error. Bootstrapping can also be useful for calculating standard errors and confidence intervals on things that are mathematically complicated to compute directly (such as the standard error of the median).
+In this case, using the SEM formula for the normal distribution would be inappropriate due to this skewness. Instead, you can create empirically derived SEMs using a technique called **bootstrapping.**
+    
+## What is bootstrapping?
 
+Bootstrapping involves basically the same principle as calculating the SEM I described in the last post, except instead of sampling from the _population distribution_, we resample from our _sample distribution._
 
-## What if I only have one sample?
+Let's revisit the example from the previous post. We've been asked to calculate the average number of page views a website receives per day. We decided to record the daily number of page views over a 30-day period:
 
-Obviously the above is more of a thought exercise than anything. In real life, we don't have the population distribution, and we also usually don't have the luxury of taking multiple samples. In what case, what do we do? A way is to **bootstrap** the SEM using our sample. Bootstrapping involves basically the same steps as above, except instead of sampling from the population distribution, we resample from our sample distribution.
-
-Let's assume we've taken a sample of page views over a 30 day sample:
 ```{r}
 # Setting seed and generating a single sample
 set.seed(567)
-sample <- rpois(100, lambda = 220)
+sample <- rpois(30, lambda = 220)
+```
 
+```{r, message=FALSE, echo=FALSE}
 # Plotting histogram of sample of daily page views
 g1 <- ggplot(data=as.data.frame(sample), aes(sample)) + 
         geom_histogram(aes(y = ..density..), binwidth = 6, 
@@ -43,9 +65,9 @@ g1 <- ggplot(data=as.data.frame(sample), aes(sample)) +
 print(g1)
 ```
 
-The mean of this distribution is `r round(mean(sample), 2)` page views per day, which is pretty much the population mean.
+Although a Poisson distribution would be the most likely population distribution, we've decided we're not sure whether our number of page views meets the assumptions of this distribution. As such, we will bootstrap the SEM.
 
-To create a bootstrapped distribution of sample means, all we need to do is take repeated samples from this sample distribution _with replacement_ and take their means. The reason we must do this with replacement is because if we have a sample distribution of size, say 30, and we take a sample from this of size 30, we will just end up with the original sample! Importantly, this process rests on the assumption that our sample is a pretty accurate representation of our sample. We'll cover this point at the end of the blog post.
+To create a bootstrapped distribution of sample means, all we need to do is take repeated resamples from this sample distribution _with replacement_ and take their means. The reason we must do this with replacement is because if we have a sample distribution of size, say 30, and we take a sample from this of size 30, we will just end up with the original sample! Importantly, this process rests on the assumption that our sample is a pretty accurate representation of our sample. We'll cover this point at the end of the blog post.
 
 So let's do this in R. We will take our sample of 30 days of page views and take 1,000 samples from this with replacement.
 
