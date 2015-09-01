@@ -1,0 +1,20 @@
+---
+title: "Representative sampling"
+output: html_document
+---
+
+## How do I know if my sample represents my population?
+
+Choosing a good sample is less about number crunching and more about study design. Depending on the population of interest, it can be a bit tricky. Important elements of representative sampling include:
+
+## Sample size
+
+The trick to choosing a large enough sample size is making sure you gain sufficient information about the patterns you are trying to describe. For example, if we had only sampled 10 days, would that have been too small to avoid sampling extreme values by chance that threw off our estimate of the mean? If the event we were trying to sample was very rare (e.g., 1 event per 100 days), would sampling 30 days be long enough to assess its mean occurrence? However, the opposite consideration often occurs with sample size, where taking samples that are much larger than is needed is also undesirable as there may be time, monetary or even ethical reasons to limit the number of observations collected. For example, the company that asked us to assess page views would likely be unhappy if we spent 100 days collecting information on mean daily page views when the same question could be reliably answered from 30 days of data collection. There is a whole collection of methods that help you decide on the correct sample size (called **power**).
+
+## Representativeness
+
+Another consideration is that we must make the data we collect a good reflection of the population we are trying to describe. Say that I tried to collect my data after a new campaign was launched advertising the website. This would not be a representative sample of the usual mean page views per day as page views are likely to be higher at that time.
+
+A related point to this is clearly defining what your population is. 
+
+3. **Measurement:** A final step in gaining a representative sample is remembering there may be a gap between a _concept_ of interest and the _method_ you need to use to measure it. In our example, there is likely to be little gap between what we are trying to measure (number of page views) and the method (a counter of page visitors). However, what if we don't actually care about page views per say, but the popularity of a website? Would it be reasonable to say that websites with higher mean page views have greater popularity?
