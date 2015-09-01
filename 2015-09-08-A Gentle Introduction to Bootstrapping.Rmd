@@ -6,46 +6,19 @@ comments: false
 categories: [Statistics, R, Data Simulations]
 ---
 
-In the previous post, I explained the general principles behind the **standard error of the mean** (or **SEM**). The idea underlying the SEM is that you take repeated samples from the population of interest, and take the standard deviation of the means of these samples. Formulas for the SEM are available for each distribution, and accurately reflect the degree of error in your sample mean _if your data meets the assumptions of that distribution._
+In the previous post, I explained the general principles behind the [**standard error of the mean**](https://en.wikipedia.org/wiki/Standard_error) (or **SEM**). The idea underlying the SEM is that if you take repeated samples from the population of interest and take the standard deviation of the means of these samples, this gives you an estimate of the accuracy of the sample mean compared to the population mean. Formulas for the SEM are available for each distribution, and accurately reflect the degree of "fuzziness" in your sample mean **if your data meet the assumptions of that distribution.**
+<!--more-->
 
 ## What if I'm not sure if my data meets the assumptions of a distribution?
-
-You might have a case where the true population distribution of your sample doesn't meet the assumptions of the closest appropriate distribution. For example, you might be interested in describing the mean levels of depression in a population, which is naturally positively skewed (i.e., most people in a population have no or low scores on measures of depression):
-
-```{r, message=FALSE}
-require(fGarch)
-set.seed(567)
-depression <- rsnorm(100, mean = 4, sd = 1, xi = 3)
-```
-
-```{r, message=FALSE, echo=FALSE}
-require(ggplot2); require(gridExtra)
-
-barfill <- "#6baed6"
-barlines <- "#2171b5"
-line1 <- "black"
-line2 <- "#FF0000"
-
-g1 <- ggplot(data=as.data.frame(depression), aes(depression)) + 
-        geom_histogram(aes(y = ..density..), binwidth = .5, 
-                 col = barlines, 
-                 fill = barfill) + 
-        xlab("Depression scores") + 
-        ylab("Density") + 
-        theme_bw() + 
-        ggtitle("Distribution of Scores on a Depression Scale") + 
-        theme(plot.title = element_text(lineheight=.8, face="bold"))
-        
-print(g1)
-```
-    
-In this case, using the SEM formula for the normal distribution would be inappropriate due to this skewness. Instead, you can create empirically derived SEMs using a technique called **bootstrapping.**
+You might have a case where the true population distribution of your sample doesn't meet the assumptions of the closest appropriate distribution. For example, you might be interested in describing the mean levels of depression in a population, which is naturally positively skewed (i.e., most people in a population have no or low scores on measures of depression). In this case, using the SEM formula for the normal distribution would be inappropriate due to this skewness. Instead, you can create empirically derived SEMs using a technique called [**bootstrapping.**](https://en.wikipedia.org/wiki/Bootstrapping_(statistics))
     
 ## What is bootstrapping?
-
 Bootstrapping involves basically the same principle as calculating the SEM I described in the last post, except instead of sampling from the _population distribution_, we resample from our _sample distribution._
 
-Let's revisit the example from the previous post. We've been asked to calculate the mean number of page views a website receives per day. We decided to record the daily number of page views over a 30-day period:
+Let's revisit the example from the previous post. We've been asked to calculate the mean number of page views a website receives per day. We decided to assess this by taking a sample of the daily number of page views over a 30-day period:
+```{r setup, include = FALSE, echo = FALSE}
+opts_chunk$set(dev = 'pdf')
+```
 
 ```{r}
 # Setting seed and generating a single sample
@@ -53,7 +26,15 @@ set.seed(567)
 sample <- rpois(30, lambda = 220)
 ```
 
-```{r, message=FALSE, echo=FALSE}
+```{r, message=FALSE, echo=FALSE, fig.width = 10.5, fig.height = 4.5}
+require(ggplot2); require(gridExtra)
+
+# Set the colours for the graphs
+barfill <- "#A9CC06"
+barlines <- "#546603"
+line1 <- "black"
+line2 <- "#B21D0E"
+
 # Plotting histogram of sample of daily page views
 g1 <- ggplot(data=as.data.frame(sample), aes(sample)) + 
         geom_histogram(aes(y = ..density..), binwidth = 6, 
@@ -68,7 +49,9 @@ g1 <- ggplot(data=as.data.frame(sample), aes(sample)) +
 print(g1)
 ```
 
-Although a Poisson distribution would be the most likely population distribution, we've decided we're not sure whether our sample of daily page views meets the assumptions of this distribution. As such, we will bootstrap the SEM. To create a bootstrapped distribution of sample means, all we need to do is take repeated resamples from the distribution of our sample _with replacement_ and take their means. The reason we must do this with replacement is because if we have a sample distribution of size, say 30, and we take a resample from this of size 30, we will just end up with the original sample for our resample! 
+The mean of this sample is `r round(mean(sample), 1)`, which we will now treat as the population mean (without knowing the true population mean, we assume our sample mean is a very close approximation). 
+
+A [Poisson distribution](https://en.wikipedia.org/wiki/Poisson_distribution) would be the most likely population distribution, as we are measuring a count of events over time. However, we're not sure whether our sample of daily page views meets the assumptions of this distribution, and as such, we will bootstrap the SEM. To create a bootstrapped distribution of sample means, all we need to do is take repeated **resamples** from the distribution of our sample **with replacement** and take their means. The reason we must do this with replacement is because if we take a resample of 30 observations without replacement from our original sample, we will of course end up with the original sample for our resample! 
 
 An important thing to note is that because we are relying on the sample to describe the population distribution (instead of using a known distribution such as the Poisson), we have to make sure our sample is a good representation of our population. I will cover choosing a representative sample in next week's blog post.
 
@@ -91,9 +74,9 @@ for (i in 1 : 1000) {
 names(resample_frame) <- paste0("n", seq(from = 1, to = 1000, by = 1))
 ```
 
-You can see we get variability in our estimate of the population mean from resample to resample. For example, the mean in resample 1 is `r round(mean(resample_frame$n1))`, and the mean from resample 2 is `r round(mean(resample_frame$n2))`.
+Because we resample with replacement, each resampling gives a slightly different estimate of the mean. For example, the mean in resample 1 is `r round(mean(resample_frame$n1))`, and the mean from resample 2 is `r round(mean(resample_frame$n2))`.
 
-```{r, message = FALSE, echo = FALSE, fig.width = 15}
+```{r, message = FALSE, echo = FALSE, fig.width = 10.5, fig.height = 4.5}
 mean1 <- data.frame(Means="Population mean", vals = 220)
 mean2 <- data.frame(Means="Sample mean", vals = mean(resample_frame$n1))
 means <- rbind(mean1, mean2)
@@ -129,9 +112,9 @@ g2 <- ggplot(data=resample_frame, aes(resample_frame$n2)) +
 grid.arrange(g1, g2, nrow = 1, ncol = 2)
 ```
 
-In the last blog post, I described how the mean of repeated samples from a population have a distribution that approximates the normal distribution. Similarly, the distribution of means of the resamples drawn from the sample also approximate the normal distribution. Taking the standard deviation of this sample gives us the SEM (`r sd(mn_vector)`).
+In the last blog post, I described how the mean of repeated samples from a population have a distribution that approximates the normal distribution. Similarly, the distribution of means of the resamples drawn from the sample also approximates the normal distribution.
 
-```{r, echo = FALSE, fig.width=15}
+```{r, echo = FALSE, fig.width = 10.5, fig.height = 4.5}
 # Plotting a histogram with the +/- 1 and 2 standard error intervals.
 sem1 <- data.frame(SEMs="+/- 1 SEM", 
                    vals = c(mean(mn_vector) - sd(mn_vector), mean(mn_vector) + sd(mn_vector)))
@@ -156,40 +139,73 @@ g1 <- ggplot(data=as.data.frame(mn_vector), aes(mn_vector)) +
 print(g1)
 ```
 
-In our case, taking a sample of 30 days gives us a pretty accurate assessment of the population mean, with 68% of our samples giving a mean between `r round(mean(mn_vector) - sd(mn_vector), 2)` and `r round(mean(mn_vector) + sd(mn_vector), 2)`, and 95% of our samples giving a mean between `r round(mean(mn_vector) - 1.96 * sd(mn_vector), 2)` and `r round(mean(mn_vector) + 1.96 * sd(mn_vector), 2)`. In other words, 68% of the time when we take a sample we will end up with a mean between `r round(mean(mn_vector) - sd(mn_vector), 2)` and `r round(mean(mn_vector) + sd(mn_vector), 2)`, and 95% of the time when we take a sample we will end up with a mean between `r round(mean(mn_vector) - 1.96 * sd(mn_vector), 2)` and `r round(mean(mn_vector) + 1.96 * sd(mn_vector), 2)`. This is a pretty tight band around our population mean of 220 page views per day, indicating that a sample of 30 gives a pretty good estimate of the mean.
+Taking the mean of this distribution of means gives us the population mean (`r round(mean(mn_vector), 1)`), and taking the standard deviation of this distribution gives us the SEM (`r round(sd(mn_vector), 1)`). Moreover, because this distribution of resample means is normal, we know that &plusmn;1 standard errors around the mean represents 68% of the means of the resamples, and &plusmn;2 standard errors represents 95% of the resamples. In other words, 68% of the time when we take a resample we will end up with a mean between `r round(mean(mn_vector) - sd(mn_vector), 1)` and `r round(mean(mn_vector) + sd(mn_vector), 1)`, and 95% of the time when we take a resample we will end up with a mean between `r round(mean(mn_vector) - 1.96 * sd(mn_vector), 1)` and `r round(mean(mn_vector) + 1.96 * sd(mn_vector), 1)`. This is a pretty tight band around our population mean of `r round(mean(sample), 1)` page views per day.
 
-## How do I know if it is worth bootstrapping?
+## How do I know if it is worth bootstrapping my SEM?
+Let's compare the result we get from just using the formula for calculating the SEM with the result we get from bootstrapping this sample. In the case of the Poisson distribution, this is $\sqrt{\lambda / n}$.
 
-You may have also noticed that the bootstrapped SEM using 1,000 resamplings was `r round(sd(mn_vector), 2)`, which is extremely close to the SEM derived from sampling from the population () in the last blog post. This is because the sample we took of daily page views met the assumptions of the Poisson distribution (given that it was drawn directly from it).
+```{r, message = FALSE}
+# Defining lambda and n
+lambda <- mean(sample)
+n <- 30
 
+# Calculating SEM
+sem <- sqrt(lambda / n)
+```
 
+We get a result of `r round(sem, 1)`, which is extremely close to our bootstrapped estimate (`r round(sd(mn_vector), 1)`). This is because the sample we took of daily page views met the assumptions of the Poisson distribution (given that it was drawn directly from it). In this case, bootstrapping our SEM does not improve our estimate of the SEM, therefore is not worth computing over simply using the SEM formula.
 
-* Modify a Poisson distribution so it no longer meets the assumptions and bootstrap it - compare to SEM from Poisson distribution and also formula. (Probably add outliers.)
-
+However, what if our population distribution did not fit a Poisson (or other) distribution? To demonstrate this, I have created a sample of 30 days of page views that is drawn from both the Poisson and uniform distributions.
 
 ```{r}
-# Setting seed
+# Setting seed and drawing non-Poisson sample
 set.seed(567)
 sample_np <- c(rpois(10, lambda = 220), runif(20, min = 180, max = 245)) 
 
-# Generate the mean of each resample and store in a vector, and store each resample in a dataframe
+# Generate the mean of each resample and store in a vector
 mn_vector_np <- NULL
 for (i in 1 : 1000) {
     s <- sample(sample_np, 30, replace = TRUE)
     mn_vector_np <- c(mn_vector_np, mean(s))
 }
 
-mean(sample_np)
-sqrt(mean(sample_np) / 30)
-sd(mn_vector_np)
+# Generate bootstrapped SEM
+b_sem <- sd(mn_vector_np)
 
+# Generate formula-derived SEM
+f_sem <- sqrt(mean(sample_np) / 30)
 ```
 
+In this case, the SEM we obtain using the bootstrapping is `r round(b_sem, 1)`, compared to `r round(f_sem, 1)` using the formula. We can see that the formula-based SEM slightly underestimates the amount of fuzziness in our estimate of the sample mean (as demonstrated for &plusmn;1 SEMs below). In this case we would be better off using a bootstrapped SEM rather than calculating it using the formula for the Poisson distribution.
 
+```{r, echo = FALSE, fig.width = 10.5, fig.height = 4.5}
+# Plotting a histogram with the +/- 1 and 2 standard error intervals.
+sem1 <- data.frame(SEMs="+/- 1 SEM (bootstrap)", 
+                   vals = c(mean(mn_vector_np) - b_sem, mean(mn_vector_np) + b_sem))
+sem2 <- data.frame(SEMs="+/- 1 SEM (formula)", 
+                    vals = c(mean(mn_vector_np) - f_sem, mean(mn_vector_np) + f_sem))
+sems <- rbind(sem1, sem2)
 
-## How do I know if my sample represents my population?
+g1 <- ggplot(data=as.data.frame(mn_vector_np), aes(mn_vector_np)) + 
+        geom_histogram(aes(y = ..density..), binwidth = 1, 
+                 col = barlines, 
+                 fill = barfill) + 
+        xlab("Mean of each resample") + 
+        ylab("Density") + 
+        theme_bw() + 
+        ggtitle("Distribution of Means of 1,000 Resamples") + 
+        theme(plot.title = element_text(lineheight=.8, face="bold")) +
+        geom_vline(data=sems, aes(xintercept=vals, linetype = SEMs, 
+                            colour = SEMs), size = 1, show_guide = TRUE) + 
+        scale_color_manual(values=c("+/- 1 SEM (bootstrap)" = line1, 
+                                    "+/- 1 SEM (formula)" = line2))
 
-Choosing a good sample is less about number crunching and more about study design. Depending on the population of interest, it can be a bit tricky. Important elements of representative sampling include:  
-1. **Sample size:** The trick to choosing a large enough sample size is making sure you gain sufficient information about the patterns you are trying to describe. For example, if we had only sampled 10 days, would that have been too small to avoid sampling extreme values by chance that threw off our estimate of the mean? If the event we were trying to sample was very rare (e.g., 1 event per 100 days), would sampling 30 days be long enough to assess its mean occurrence? However, the opposite consideration often occurs with sample size, where taking samples that are much larger than is needed is also undesirable as there may be time, monetary or even ethical reasons to limit the number of observations collected. For example, the company that asked us to assess page views would likely be unhappy if we spent 100 days collecting information on mean daily page views when the same question could be reliably answered from 30 days of data collection. There is a whole collection of methods that help you decide on the correct sample size (called **power**) which are beyond the scope of this already long blog post.
-2. **Representativeness:** Another consideration is that we must make the data we collect a good reflection of the population we are trying to describe. Say that I tried to collect my data after a new campaign was launched advertising the website. This would not be a representative sample of the usual mean page views per day as page views are likely to be higher at that time.
-3. **Measurement:** A final step in gaining a representative sample is remembering there may be a gap between a _concept_ of interest and the _method_ you need to use to measure it. In our example, there is likely to be little gap between what we are trying to measure (number of page views) and the method (a counter of page visitors). However, what if we don't actually care about page views per say, but the popularity of a website? Would it be reasonable to say that websites with higher mean page views have greater popularity?
+print(g1)
+```
+
+## The take away message
+Bootstrapping is a great technique to use when you are not sure if your data meet the assumptions of the closest appropriate distribution. This is a really common problem outside of the nice, clean world of simulations, and bootstrapping offers us to way to gain more accurate statistics from messy, real world data. While it may be a cumbersome method to use with very large data (as resampling from millions of observations is very time consuming), it can offer a convenient way of checking the robustness of your data to the assumptions of your distributions and gaining more accurate estimates in such situations.
+
+Some of the points and code in this blog post are adapted from the excellent [Statistical Inference](https://www.coursera.org/course/statinference) unit on Coursera by [Brian Caffo](https://twitter.com/bcaffo), [Jeff Leek](https://twitter.com/jtleek) and [Roger Peng](https://twitter.com/rdpeng).
+
+Finally, the full code used to create the figures in this post is located in this [repo on my Github page](https://github.com/t-redactyl/Blog-posts).
