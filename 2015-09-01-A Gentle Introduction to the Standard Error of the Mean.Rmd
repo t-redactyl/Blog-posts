@@ -1,29 +1,27 @@
 ---
 title: 'A Gentle Introduction to the Standard Error of the Mean'
 layout: post
-output: html_document
+date: 2015-09-01
+comments: false
+categories: [Statistics, R, Data Simulations]
 ---
 
-## What is the standard error of the mean?
-
 Imagine if you were working for a company that wanted to know the mean number of page views their website received per day. How do you measure this? Well, the most logical thing to do is to pick a sample of days, record the number of page views, and take the mean of these. _However_, how do you know if this is the true mean number of page views per day? How do you know if you've taken a big enough sample?
-
+<!--more-->
 The first thing to understand is that we are talking about _two different means_. The first is the _true mean_ (or _population mean_) number of page views per day, which we would get if we took every day that the site has been in existence and took the mean of the daily page views. The other is the _sample mean_ number of page views per day, which we would get if we took a representative sample of days and took the mean of their daily page views. (I will talk more about selecting a representative sample in a later blog post - stay tuned!)
 
 The [**standard error of the mean**](https://en.wikipedia.org/wiki/Standard_error) (or **SEM**) is the amount our sample mean might differ from the true mean. In our page views example, this means we are trying to find out how much possible "fuzziness" there is in our sample mean number of daily page views as an estimate of the true mean. Is it likely our estimate might be out by a couple of page views per day? Or could it be as much as 100? Obviously, the smaller the standard error of the mean, the better the sample estimate reflects the true population value. There are formulas for calculating the SEM depending on the distribution you are dealing with, but the main focus of this blog post will be describing the general principles underlying it.
 
 ## Why should I care about the standard error of the mean?
-
 It is easy once you get into applying statistics to a sample to forget you are dealing with a _representation_ of a population, rather than the _population itself_. As such, all statistics you derive using your sample are just estimates of the true population parameters you are hoping to talk about. It is therefore important that you have some idea how reliable these estimates are before you start inferring from them.
 
 ## How is the standard error of the mean calculated?
-
 One way of assessing the SEM is to sample repeatedly from the population, calculate the mean for each sample, and plot the distribution of these means. Each sample is expected to be a different representation of the population, with different estimates of the mean in each sample. 
 
 Let's revisit our problem of assessing the accuracy of the mean number of page views. One thing you could do is take a large number of samples of 30 day periods each, where large means 1,000 or more. Instead of doing this (because it would take about 82 years...), let's pretend we already know the population mean and distribution and simulate this result in R. In this case, let's say we have an mean of 220 page views per day, which we would model using a Poisson distribution (i.e., $\lambda$ = 220/day). (As you may already know, we use the [Poisson distribution](https://en.wikipedia.org/wiki/Poisson_distribution) as it is the most appropriate distribution for describing a count of events occurring over time.)
 
 ```{r setup, include = FALSE, echo = FALSE}
-opts_chunk$set(dev = 'jpeg', dpi = 120, out.width = '650px')
+opts_chunk$set(dev = 'pdf')
 ```
 
 ```{r, message = FALSE}
@@ -48,7 +46,7 @@ names(sample_frame) <- paste0("n", seq(from = 1, to = 1000, by = 1))
 
 When we do this, our first sample has a mean rate of `r round(mn_vector[1])` page views per day, and our second sample has a mean rate of `r round(mn_vector[2])` page views per day. Looking at the sample distributions (below), the sample mean almost completely mirrors the population mean in sample 1, but there is quite a bit of difference between the two values in sample 2.
 
-```{r sem_sample_plots, message = FALSE, echo = FALSE}
+```{r sem_sample_plots, message = FALSE, echo = FALSE, fig.width = 10.5, fig.height = 4.5}
 # Load required packages
 require(ggplot2); require(gridExtra)
 
@@ -102,7 +100,7 @@ It turns out that the distribution of the mean of the samples is approximately n
 
 This can be seen in the histogram of the means of each sample:
 
-```{r sem_normal_plot, message = FALSE, echo=FALSE}
+```{r sem_normal_plot, message = FALSE, echo=FALSE, fig.width = 10.5, fig.height = 4.5}
 # Plotting histogram of the distribution of sample means
 g1 <- ggplot(data=as.data.frame(mn_vector), aes(mn_vector)) + 
         geom_histogram(aes(y = ..density..), binwidth = 1, 
@@ -125,7 +123,7 @@ The mean of this distribution should be a pretty close estimate of the populatio
 
 In our case, taking a sample of 30 days gives us a pretty accurate assessment of the population mean, with 68% of our samples giving a mean between `r round(mean(mn_vector) - sd(mn_vector), 2)` and `r round(mean(mn_vector) + sd(mn_vector), 2)`, and 95% of our samples giving a mean between `r round(mean(mn_vector) - 1.96 * sd(mn_vector), 2)` and `r round(mean(mn_vector) + 1.96 * sd(mn_vector), 2)`. In other words, 68% of the time when we take a sample we will end up with a mean between `r round(mean(mn_vector) - sd(mn_vector), 2)` and `r round(mean(mn_vector) + sd(mn_vector), 2)`, and 95% of the time when we take a sample we will end up with a mean between `r round(mean(mn_vector) - 1.96 * sd(mn_vector), 2)` and `r round(mean(mn_vector) + 1.96 * sd(mn_vector), 2)`. This is a pretty tight band around our population mean of 220 page views per day, indicating that a sample of 30 gives a pretty good estimate of the mean.
 
-```{r sem_percentile_plot, echo = FALSE}
+```{r sem_percentile_plot, echo = FALSE, fig.width = 10.5, fig.height = 4.5}
 # Plotting a histogram with the +/- 1 and 2 standard error intervals.
 sem1 <- data.frame(SEMs="+/- 1 SEM", 
                    vals = c(mean(mn_vector) - sd(mn_vector), mean(mn_vector) + sd(mn_vector)))
@@ -151,7 +149,6 @@ print(g1)
 ```
 
 ## Back to the formula...
-
 As I mentioned at the beginning of this post, the SEM is calculated using a distribution-specific formula. In the case of the Poisson distribution, this is $\sqrt{\lambda / n}$. Let's see how this compares to our simulation-based estimation of the SEM.
 
 ```{r, message = FALSE}
@@ -166,9 +163,8 @@ sem <- sqrt(lambda / n)
 Using the formula, the range of mean daily page views falling within &plusmn;1 SEM is `r round(220 - sem, 2)` to `r round(220 + sem, 2)`, and the range falling within &plusmn;2 SEMs is `r round(220 - 1.96 * sem, 2)` to `r round(220 + 1.96 * sem, 2)`. This is extremely close to the estimate given using the simulation exercise above.
 
 ## The take away message
-
 As you can see, the SEM is a useful indication of how likely it is that your sample mean is an accurate reflection of the population value. You can also see it is highly dependent on the size of the sample you choose, with larger samples leading to tighter standard errors. While I have demonstrated calculating the SEM for the mean of a Poisson-distributed variable, the same principles apply with any type of distribution.
 
 Much of the points and code in this blog post are adapted from the excellent [Statistical Inference](https://www.coursera.org/course/statinference) unit on Coursera by [Brian Caffo](https://twitter.com/bcaffo), [Jeff Leek](https://twitter.com/jtleek) and [Roger Peng](https://twitter.com/rdpeng). This course gives a far more comprehensive coverage of this material and is highly recommended.
 
-Finally, the full code used to create the figures in this post is located in the [repo on my Github page](https://github.com/t-redactyl/t-redactyl.github.io/tree/master/blog) for this website.
+Finally, the full code used to create the figures in this post is located in this [repo on my Github page](https://github.com/t-redactyl/Blog-posts).

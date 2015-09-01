@@ -1,6 +1,9 @@
 ---
 title: "A Gentle Introduction to Bootstrapping"
-output: html_document
+layout: post
+date: 2015-09-08
+comments: false
+categories: [Statistics, R, Data Simulations]
 ---
 
 In the previous post, I explained the general principles behind the **standard error of the mean** (or **SEM**). The idea underlying the SEM is that you take repeated samples from the population of interest, and take the standard deviation of the means of these samples. Formulas for the SEM are available for each distribution, and accurately reflect the degree of error in your sample mean _if your data meets the assumptions of that distribution._

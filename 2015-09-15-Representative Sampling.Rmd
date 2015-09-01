@@ -1,11 +1,17 @@
 ---
-title: "Representative sampling"
-output: html_document
+title: "Representative Sampling"
+layout: post
+date: 2015-09-15
+comments: false
+categories: [Methodology]
 ---
 
 ## How do I know if my sample represents my population?
 
-Choosing a good sample is less about number crunching and more about study design. Depending on the population of interest, it can be a bit tricky. Important elements of representative sampling include:
+Choosing a good sample is less about number crunching and more about study design. 
+
+
+Depending on the population of interest, it can be a bit tricky. Important elements of representative sampling include:
 
 ## Sample size
 
