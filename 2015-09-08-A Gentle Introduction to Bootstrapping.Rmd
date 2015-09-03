@@ -17,6 +17,7 @@ Bootstrapping involves basically the same principle as calculating the SEM I des
 
 Let's revisit the example from the previous post. We've been asked to calculate the mean number of page views a website receives per day. We decided to assess this by taking a sample of the daily number of page views over a 30-day period:
 ```{r setup, include = FALSE, echo = FALSE}
+library(knitr)
 opts_chunk$set(dev = 'pdf')
 ```
 

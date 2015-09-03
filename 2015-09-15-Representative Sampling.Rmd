@@ -6,21 +6,37 @@ comments: false
 categories: [Methodology]
 ---
 
-## How do I know if my sample represents my population?
+Unless we are lucky enough to have access to an entire population, and the capacity to analyse all of that data, we usually have to make do with [**samples**](https://en.wikipedia.org/wiki/Sample_(statistics)) from our population to make statistical inferences. Choosing a sample that is a good representation of your population is the heart of a quality analysis, as all of the fancy statistical tricks in the world can't make accurate conclusions from bad or biased data. In this blog post, I will discuss some key concepts in selecting a representative sample.
 
-Choosing a good sample is less about number crunching and more about study design. 
+## First things first: What is your population of interest?
+Obviously it is a bit tricky to get a representative sample if you're not sure what population you're trying to represent, so the first step is carefully considering this question. In the two previous blog posts ([here](http://t-redactyl.github.io/blog/2015/09/A-Gentle-Introduction-to-the-Standard-Error-of-the-Mean.html) and here), I used the example that your company wanted you to assess the mean daily number of page views their website receives. Well, _what_ mean daily page views do they want to know about? 
 
+Let's consider some complications to that question. The first is **seasonality.** Your website might receive more hits at certain times of year than at any other time of year. Do we include or exclude these periods from our population? Another consideration is the **demographic profile** of the people visiting your website. Are we interested in all visitors? Or do we want visitors of a certain sex, age group or region? A final consideration is whether there has been some sort of **change in condition** that may have increased the visitors to the site. For example, was there an advertising campaign launched recently? Has the website added additional languages which mean a broader audience can access it? Does the website sell a product that now ships to additional places?
 
-Depending on the population of interest, it can be a bit tricky. Important elements of representative sampling include:
+Our website is a retail platform that sells children's toys. We see some seasonal spikes in page views every year at Easter, Christmas and two major sale periods every year (Black Friday and post-Christmas). No major advertising campaigns are planned outside these seasonal periods, nor any changes planned to the site. Our company want to know what the "typical" number of mean daily page views is outside these seasonal periods. They don't care about individual demographic groups of visitors, they just want the visitors as a whole. Therefore, we need to find a sample that reflects this.
 
-## Sample size
+## Choosing a representative sample
+### Sample size
+Sample size is a key element to representative sampling as it increases you chances of gaining sufficient information about the population, rather than having your statistics influenced by anomalous observations. For example, imagine if by chance we ended up with a much higher than average value. Let's see how this influences a sample of 30 page views compared to a sample of 10. We generate samples drawn from a Poisson distribution with an average of 220 views per day, and add an outlier of 260 views per day to each.
 
-The trick to choosing a large enough sample size is making sure you gain sufficient information about the patterns you are trying to describe. For example, if we had only sampled 10 days, would that have been too small to avoid sampling extreme values by chance that threw off our estimate of the mean? If the event we were trying to sample was very rare (e.g., 1 event per 100 days), would sampling 30 days be long enough to assess its mean occurrence? However, the opposite consideration often occurs with sample size, where taking samples that are much larger than is needed is also undesirable as there may be time, monetary or even ethical reasons to limit the number of observations collected. For example, the company that asked us to assess page views would likely be unhappy if we spent 100 days collecting information on mean daily page views when the same question could be reliably answered from 30 days of data collection. There is a whole collection of methods that help you decide on the correct sample size (called **power**).
+```{r}
+set.seed(567)
 
-## Representativeness
+# Sample of 30 (29 from the Poisson distribution and an outlier of 260)
+sample1 <- c(rpois(29, lambda = 220), 260)
+sample2 <- c(rpois(9, lambda = 220), 260)
+```
 
+Compared to the population mean of 220 views per day, the mean of the sample of 30 is `r round(mean(sample1), 1)` whereas the mean of the sample of 10 is `r round(mean(sample2), 1)`. As you can see, the smaller sample is far more influenced by the extreme value than the larger one. 
+
+A sufficient sample depends on a lot of things. For example, if the event we were trying to describe was rare (e.g., 1 event per 100 days), a sample of 30 would likely be too small to assess its mean occurrence. When conducting hypothesis testing, the correct sample size is generally calculated using [**power**](https://en.wikipedia.org/wiki/Statistical_power) calculations, something that is beyond the scope of this blog post.
+
+An additional consideration is that overestimating the sample size needed can also be undesirable as there may be time, monetary or even ethical reasons to limit the number of observations collected. For example, the company that asked us to assess page views would likely be unhappy if we spent 100 days collecting information on mean daily page views when the same question could be reliably answered from 30 days of data collection.
+
+### Representativeness
 Another consideration is that we must make the data we collect a good reflection of the population we are trying to describe. Say that I tried to collect my data after a new campaign was launched advertising the website. This would not be a representative sample of the usual mean page views per day as page views are likely to be higher at that time.
 
-A related point to this is clearly defining what your population is. 
+## Measurement
+A final step in gaining a representative sample is remembering there may be a gap between a _concept_ of interest and the _method_ you need to use to measure it. In our example, there is likely to be little gap between what we are trying to measure (number of page views) and the method (a counter of page visitors). However, what if we don't actually care about page views per say, but the popularity of a website? Would it be reasonable to say that websites with higher mean page views have greater popularity?
 
-3. **Measurement:** A final step in gaining a representative sample is remembering there may be a gap between a _concept_ of interest and the _method_ you need to use to measure it. In our example, there is likely to be little gap between what we are trying to measure (number of page views) and the method (a counter of page visitors). However, what if we don't actually care about page views per say, but the popularity of a website? Would it be reasonable to say that websites with higher mean page views have greater popularity?
+(Validity)
