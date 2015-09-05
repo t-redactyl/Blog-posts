@@ -27,7 +27,7 @@ set.seed(567)
 sample <- rpois(30, lambda = 220)
 ```
 
-```{r, message=FALSE, echo=FALSE, fig.width = 10.5, fig.height = 4.5}
+```{r bootstrap_plot_1, message=FALSE, echo=FALSE, fig.width = 10.5, fig.height = 4.5}
 require(ggplot2); require(gridExtra)
 
 # Set the colours for the graphs
@@ -77,7 +77,7 @@ names(resample_frame) <- paste0("n", seq(from = 1, to = 1000, by = 1))
 
 Because we resample with replacement, each resampling gives a slightly different estimate of the mean. For example, the mean in resample 1 is `r round(mean(resample_frame$n1))`, and the mean from resample 2 is `r round(mean(resample_frame$n2))`.
 
-```{r, message = FALSE, echo = FALSE, fig.width = 10.5, fig.height = 4.5}
+```{r bootstrap_plot_2, message = FALSE, echo = FALSE, fig.width = 10.5, fig.height = 4.5}
 mean1 <- data.frame(Means="Population mean", vals = 220)
 mean2 <- data.frame(Means="Sample mean", vals = mean(resample_frame$n1))
 means <- rbind(mean1, mean2)
@@ -115,7 +115,7 @@ grid.arrange(g1, g2, nrow = 1, ncol = 2)
 
 In the last blog post, I described how the mean of repeated samples from a population have a distribution that approximates the normal distribution. Similarly, the distribution of means of the resamples drawn from the sample also approximates the normal distribution.
 
-```{r, echo = FALSE, fig.width = 10.5, fig.height = 4.5}
+```{r bootstrap_plot_3, echo = FALSE, fig.width = 10.5, fig.height = 4.5}
 # Plotting a histogram with the +/- 1 and 2 standard error intervals.
 sem1 <- data.frame(SEMs="+/- 1 SEM", 
                    vals = c(mean(mn_vector) - sd(mn_vector), mean(mn_vector) + sd(mn_vector)))
@@ -179,7 +179,7 @@ f_sem <- sqrt(mean(sample_np) / 30)
 
 In this case, the SEM we obtain using the bootstrapping is `r round(b_sem, 1)`, compared to `r round(f_sem, 1)` using the formula. We can see that the formula-based SEM slightly underestimates the amount of fuzziness in our estimate of the sample mean (as demonstrated for &plusmn;1 SEMs below). In this case we would be better off using a bootstrapped SEM rather than calculating it using the formula for the Poisson distribution.
 
-```{r, echo = FALSE, fig.width = 10.5, fig.height = 4.5}
+```{r bootstrap_plot_4, echo = FALSE, fig.width = 10.5, fig.height = 4.5}
 # Plotting a histogram with the +/- 1 and 2 standard error intervals.
 sem1 <- data.frame(SEMs="+/- 1 SEM (bootstrap)", 
                    vals = c(mean(mn_vector_np) - b_sem, mean(mn_vector_np) + b_sem))

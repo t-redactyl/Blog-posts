@@ -75,7 +75,8 @@ views_xts %>%
 ```
 
 ```{r ggplot2_chunk, echo = FALSE, fig.width = 9, fig.height = 4.5}
-require(ggplot2)
+require(ggplot2); require(knitr)
+opts_chunk$set(fig.path='/figure/',echo=FALSE, warning=FALSE, message=FALSE)
 
 qplot(days, page.views, data = views, geom = "line") %>%
     add(geom_line(colour = "#546603")) %>%

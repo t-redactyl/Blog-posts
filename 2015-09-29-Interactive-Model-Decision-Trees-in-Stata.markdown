@@ -307,6 +307,6 @@ The output that the user sees is shown below, but I recommend you run the functi
 The take away message
 ---------------------
 
-I hope this program has given you some ideas for teaching clients or students about model building. The function can be easily adapted to any decision-making process where the user can easily choose between models on the basis of the output. It is also obviously not limited to two decision points - you can have as many as you can reasonably keep track of (although it will get confusing pretty fast as the number of decision points increases...).
+I hope this program has given you some ideas for teaching clients or students about model building. The function can be easily adapted to any decision-making process where the user can easily choose between models on the basis of the output. It is also obviously not limited to two decision points - you can have as many as you can reasonably keep track of (although it will get confusing pretty fast as the number of decision points increases...). The .do file containing this function is located on my [Github page](https://github.com/t-redactyl/Stata-tools/blob/master/model_decision.do).
 
 This post was written in Stata using [MarkDoc](http://www.haghish.com/statistics/stata-blog/reproducible-research/dynamic_documents/markdown.php#fn3), which was developed by the talented E. F. Haghish.
