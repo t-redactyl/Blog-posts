@@ -6,10 +6,89 @@ comments: false
 categories: [Statistics, Data Simulations, R]
 ---
 
-You can also embed plots, for example:
+The usual process when we carry out a hypothesis test is:  
+* Define your null hypothesis (H$\sf{_{0}}$) and your alternative hypothesis (H$\sf{_{a}}$);  
+* Pick the most likely appropriate test distribution (t, z, binomial, etc.);  
+* Compute your test statistic under this distribution;  
+* Work out whether we reject the null hypothesis based whether your test statistic exceeds a critical statistic under this distribution.
 
-```{r, echo=FALSE}
-plot(cars)
+For example, imagine if we wanted to test whether two types of [example] significantly differed.
+
+The null hypothesis (H0) would be: $\mu\sf{_{1}}$ - $\mu\sf{_{2}}$ = 0, and the alternative hypothesis (Ha) would be: $\mu\sf{_{1}}$ - $\mu\sf{_{2}}$ &#8800; 0
+
+Confidence interval for t-test:
+$\bar X\sf{_{1}}$ - $\bar X\sf{_{2}}$ &plusmn; _t_(_n_$\sf{_{1}}$ + _n_$\sf{_{2}}$ - 2), 1 - $\alpha$ / 2 * 
+
+```{r}
+data("ToothGrowth")
+
+require(psych)
+describe(ToothGrowth$len[ToothGrowth$supp == "OJ"])
+describe(ToothGrowth$len[ToothGrowth$supp == "VC"])
+
+sp <- sqrt((30 * 6.61^2 + 30 * 8.27^2)/(30 + 30 - 2))
+0 + c(-1, 1) * qt(.975, 28) * sp * (1/30 + 1/30)^.5
+20.66 - 16.96
+
+t.test(ToothGrowth$len[ToothGrowth$supp == "OJ"], ToothGrowth$len[ToothGrowth$supp == "VC"], 
+       paired = FALSE, var.equal = TRUE)
+
+
 ```
 
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+The distribution the critical T and test statistic are calculated under is the distribution of difference between means (as we are trying to see whether difference as extreme is likely under this distribution).
+
+As you can see, a major part of this process is having data that fit the assumptions of your chosen distribution. What if this is not the case? 
+
+
+
+```{r, echo=FALSE}
+# Generate data
+data <- data.frame(group = numeric(length = 100), 
+                   null = numeric(length = 100), 
+                   alternative = numeric(length = 100))
+# Create grouping variable (50 observations in each)
+set.seed(567)
+data$group <- rep(c(0, 1), c(50, 50))
+
+# Create null (group means do not differ)
+data$null <- c(rnorm(50, mean = 10, sd = 2), runif(50, min = 4, max = 16))
+
+# Create alternative (group means differ)
+data$alternative[data$group == 0] <- c(rnorm(25, mean = 10, sd = 2), runif(25, min = 4, max = 16))
+data$alternative[data$group == 1] <- c(rnorm(25, mean = 10, sd = 2), runif(25, min = 4, max = 16)) + 10
+
+# Create difference between means of groups for null and alternative
+null.diff <- mean(data$null[data$group == 1]) - mean(data$null[data$group == 0])
+alt.diff <- mean(data$alternative[data$group == 1]) - mean(data$alternative[data$group==0])
+
+# Create a function that randomly reassigns each observation to a different group and then takes the mean difference between these new groups.
+one.test <- function(grouping, variable) {
+                resampled.group <- sample(grouping)
+                mean(variable[resampled.group == 1]) - mean(variable[resampled.group == 0])
+            }
+
+# Example of how resampling works:
+data$resampled.group <- sample(data$group)
+head(data[ , c("group", "resampled.group", "null", "alternative")], n = 10)
+mean(data$null[data$resampled.group == 1]) - mean(data$null[data$resampled.group == 0])
+null.diff
+mean(data$alternative[data$resampled.group == 1]) - mean(data$alternative[data$resampled.group == 0])
+alt.diff
+data$resampled.group <- NULL
+
+many.truenull <- replicate(1000, one.test(data$group, data$null))
+many.falsenull <- replicate(1000, one.test(data$group, data$alternative))
+
+hist(many.truenull)
+abline(v=null.diff, lwd=2, col="purple")
+mean(abs(many.truenull) > abs(null.diff))
+
+hist(many.falsenull)
+abline(v=alt.diff, lwd=2, col="purple")
+mean(abs(many.falsenull) > abs(alt.diff))
+```
+
+
+
+As part of writing this post, I heavily borrowed from the code used in [Thomas Lumley and Ken Rices' presentation](http://faculty.washington.edu/kenrice/sisg/SISG-08-06.pdf) for the Summer Institute in Statistical Genetics, and used code and explanations from [Charlie Geyer's tutorial](http://www.stat.umn.edu/geyer/old/5601/examp/perm.html) from his class at University of Minnesota, Twin Cities, 

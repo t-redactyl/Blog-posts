@@ -21,6 +21,7 @@ One way of assessing the SEM is to sample repeatedly from the population, calcul
 Let's revisit our problem of assessing the accuracy of the mean number of page views. One thing you could do is take a large number of samples of 30 day periods each, where large means 1,000 or more. Instead of doing this (because it would take about 82 years...), let's pretend we already know the population mean and distribution and simulate this result in R. In this case, let's say we have an mean of 220 page views per day, which we would model using a Poisson distribution (i.e., $\lambda$ = 220/day). (As you may already know, we use the [Poisson distribution](https://en.wikipedia.org/wiki/Poisson_distribution) as it is the most appropriate distribution for describing a count of events occurring over time.)
 
 ```{r setup, include = FALSE, echo = FALSE}
+require(knitr)
 opts_chunk$set(dev = 'png')
 ```
 
@@ -51,10 +52,10 @@ When we do this, our first sample has a mean rate of `r round(mn_vector[1])` pag
 require(ggplot2); require(gridExtra)
 
 # Set the colours for the graphs
-barfill <- "#A9CC06"
-barlines <- "#546603"
+barfill <- "#4271AE"
+barlines <- "#1F3552"
 line1 <- "black"
-line2 <- "#B21D0E"
+line2 <- "#FF3721"
 
 # Plotting histogram of sample 1
 mean1 <- data.frame(Means="Population mean", vals = 220)
