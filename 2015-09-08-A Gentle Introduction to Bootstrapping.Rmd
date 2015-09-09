@@ -1,24 +1,23 @@
 ---
-title: "A Gentle Introduction to Bootstrapping"
-layout: post
+title: A Gentle Introduction to Bootstrapping
 date: 2015-09-08
 comments: false
-categories: [Statistics, R, Data Simulations]
+tags: Statistics, R, Data Simulations
+keywords: rlanguage, bootstrapping, simulations, standard error of the mean, data science
 ---
 
 In the previous post, I explained the general principles behind the [**standard error of the mean**](https://en.wikipedia.org/wiki/Standard_error) (or **SEM**). The idea underlying the SEM is that if you take repeated samples from the population of interest and take the standard deviation of the means of these samples, this gives you an estimate of the accuracy of the sample mean compared to the population mean. Formulas for the SEM are available for each distribution, and accurately reflect the degree of "fuzziness" in your sample mean **if your data meet the assumptions of that distribution.**
-<!--more-->
 
 ## What if I'm not sure if my data meets the assumptions of a distribution?
 You might have a case where the true population distribution of your sample doesn't meet the assumptions of the closest appropriate distribution. For example, you might be interested in describing the mean levels of depression in a population, which is naturally positively skewed (i.e., most people in a population have no or low scores on measures of depression). In this case, using the SEM formula for the normal distribution would be inappropriate due to this skewness. Instead, you can create empirically derived SEMs using a technique called [**bootstrapping.**](https://en.wikipedia.org/wiki/Bootstrapping_(statistics))
     
 ## What is bootstrapping?
-Bootstrapping involves basically the same principle as calculating the SEM I described in the last post, except instead of sampling from the _population distribution_, we resample from our _sample distribution._
+Bootstrapping involves basically the same principle as calculating the SEM I described in the last post, except instead of **sampling from the population distribution**, we **esample from our sample distribution.**
 
 Let's revisit the example from the previous post. We've been asked to calculate the mean number of page views a website receives per day. We decided to assess this by taking a sample of the daily number of page views over a 30-day period:
 ```{r setup, include = FALSE, echo = FALSE}
 library(knitr)
-opts_chunk$set(dev = 'pdf')
+opts_chunk$set(dev = 'png')
 ```
 
 ```{r}
@@ -31,10 +30,10 @@ sample <- rpois(30, lambda = 220)
 require(ggplot2); require(gridExtra)
 
 # Set the colours for the graphs
-barfill <- "#A9CC06"
-barlines <- "#546603"
+barfill <- "#4271AE"
+barlines <- "#1F3552"
 line1 <- "black"
-line2 <- "#B21D0E"
+line2 <- "#FF3721"
 
 # Plotting histogram of sample of daily page views
 g1 <- ggplot(data=as.data.frame(sample), aes(sample)) + 
@@ -140,7 +139,7 @@ g1 <- ggplot(data=as.data.frame(mn_vector), aes(mn_vector)) +
 print(g1)
 ```
 
-Taking the mean of this distribution of means gives us the population mean (`r round(mean(mn_vector), 1)`), and taking the standard deviation of this distribution gives us the SEM (`r round(sd(mn_vector), 1)`). Moreover, because this distribution of resample means is normal, we know that &plusmn;1 standard errors around the mean represents 68% of the means of the resamples, and &plusmn;2 standard errors represents 95% of the resamples. In other words, 68% of the time when we take a resample we will end up with a mean between `r round(mean(mn_vector) - sd(mn_vector), 1)` and `r round(mean(mn_vector) + sd(mn_vector), 1)`, and 95% of the time when we take a resample we will end up with a mean between `r round(mean(mn_vector) - 1.96 * sd(mn_vector), 1)` and `r round(mean(mn_vector) + 1.96 * sd(mn_vector), 1)`. This is a pretty tight band around our population mean of `r round(mean(sample), 1)` page views per day.
+Taking the mean of this distribution of means gives us the population mean (`r round(mean(mn_vector), 1)`), and taking the standard deviation of this distribution gives us the SEM (`r round(sd(mn_vector), 1)`). Moreover, because this distribution of resample means is normal, we know that &plusmn;1 standard errors around the mean represents 68% of the means of the resamples, and &plusmn;2 standard errors represents 95% of the resamples. In other words, 68% of the time when we take a resample we will end up with a mean between `r round(mean(mn_vector) - sd(mn_vector), 1)` and `r round(mean(mn_vector) + sd(mn_vector), 1)`, and 95% of the time when we take a resample we will end up with a mean between `r round(mean(mn_vector) - 1.96 * sd(mn_vector), 1)` and `r round(mean(mn_vector) + 1.96 * sd(mn_vector), 1)`, a pretty small margin of error around our population mean of `r round(mean(sample), 1)` page views per day.
 
 ## How do I know if it is worth bootstrapping my SEM?
 Let's compare the result we get from just using the formula for calculating the SEM with the result we get from bootstrapping this sample. In the case of the Poisson distribution, this is $\sqrt{\lambda / n}$.
@@ -177,7 +176,7 @@ b_sem <- sd(mn_vector_np)
 f_sem <- sqrt(mean(sample_np) / 30)
 ```
 
-In this case, the SEM we obtain using the bootstrapping is `r round(b_sem, 1)`, compared to `r round(f_sem, 1)` using the formula. We can see that the formula-based SEM slightly underestimates the amount of fuzziness in our estimate of the sample mean (as demonstrated for &plusmn;1 SEMs below). In this case we would be better off using a bootstrapped SEM rather than calculating it using the formula for the Poisson distribution.
+In this case, the SEM we obtain using bootstrapping is `r round(b_sem, 1)`, compared to `r round(f_sem, 1)` using the formula. We can see that the formula-based SEM slightly underestimates the amount of fuzziness in our estimate of the sample mean (as demonstrated for &plusmn;1 SEMs below). In this case we would be better off using a bootstrapped SEM rather than calculating it using the formula for the Poisson distribution.
 
 ```{r bootstrap_plot_4, echo = FALSE, fig.width = 10.5, fig.height = 4.5}
 # Plotting a histogram with the +/- 1 and 2 standard error intervals.
