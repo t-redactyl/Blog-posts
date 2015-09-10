@@ -1,70 +1,12 @@
 ---
-title: "A Gentle Introduction to Permutation Tests"
-layout: post
-date: 2015-09-15
+title: Two-Group Hypothesis Testing: Permutation Tests
+date: 2015-09-08
 comments: false
-categories: [Statistics, Data Simulations, R]
+tags: Statistics, R, Data Simulations, Hypothesis Testing
+keywords: rlanguage, t test, simulations, data science, hypothesis testing
 ---
 
-In my previous posts, I asked you to imagine that we work for a retail website that sells children's toys. In the past, they asked us to estimate the mean number of page views per day (see here and here for my posts discussing this problem). Now, they're planning to launch two advertising campaigns, and they want us to see which one generates the most income.
 
-After taking [representative samples](post) of the revenue generated from each campaign, we then carry out a hypothesis test. The usual workflow of hypothesis testing is as follows:
-1. Define your null hypothesis;  
-2. Pick the most likely appropriate test distribution (t, z, binomial, etc.);  
-3. Compute your test statistic under this distribution;  
-4. Work out whether we reject the null hypothesis based whether your test statistic exceeds a critical statistic under this distribution.
-
-For example, imagine if we wanted to test whether two types of [example] significantly differed.
-
-The null hypothesis (H0) would be: $\mu\sf{_{1}}$ - $\mu\sf{_{2}}$ = 0, and the alternative hypothesis (Ha) would be: $\mu\sf{_{1}}$ - $\mu\sf{_{2}}$ &#8800; 0
-
-Confidence interval for t-test:
-$\bar X\sf{_{1}}$ - $\bar X\sf{_{2}}$ &plusmn; _t_(_n_$\sf{_{1}}$ + _n_$\sf{_{2}}$ - 2), 1 - $\alpha$ / 2 * 
-
-```{r}
-data("ToothGrowth")
-
-require(psych); require(tidyr); require(ggplot2)
-describe(ToothGrowth$len[ToothGrowth$supp == "OJ"])
-describe(ToothGrowth$len[ToothGrowth$supp == "VC"])
-
-sp <- sqrt((30 * 6.61^2 + 30 * 8.27^2)/(30 + 30 - 2))
-0 + c(-1, 1) * qt(.975, 28) * sp * (1/30 + 1/30)^.5
-20.66 - 16.96
-
-t.test(ToothGrowth$len[ToothGrowth$supp == "OJ"], ToothGrowth$len[ToothGrowth$supp == "VC"], 
-       paired = FALSE, var.equal = TRUE)
-
-# Estimate 1 SEM around 0 for the test distribution:
-
-sem <- 0 + 1 * qt(.84, 28) * sp * (1/30 + 1/30)^.5
-
-qplot(c(-5, 5), stat = "function", fun = dt(), geom = "line")
-
-lci <- -1 * qt(.975, 28) * sp * (1/30 + 1/30)^.5
-uci <- 1 * qt(.975, 28) * sp * (1/30 + 1/30)^.5
-
-line1 <- data.frame(lines="95% CI", vals = c(lci, uci))
-line2 <- data.frame(lines="Test statistic", 
-                    vals = mean(ToothGrowth$len[ToothGrowth$supp == "OJ"]) - mean(ToothGrowth$len[ToothGrowth$supp == "VC"]))
-lines <- rbind(line1, line2)
-
-ggplot(data.frame(x = c(-4.5, 4.5)), aes(x)) + 
-    stat_function(fun = dt, args = list(df = 28)) +
-    xlab("Values") + 
-    ylab("Density") + 
-    theme_bw() +
-    geom_vline(data=lines, aes(xintercept=vals, linetype = lines, 
-                        colour = lines), size = 1, show_guide = TRUE) + 
-    scale_color_manual(values=c("95% CI" = "black", 
-                                "Test statistic" = "black"))
-```
-
-SEM = `r sem`
-
-The distribution the critical T and test statistic are calculated under is the distribution of difference between means (as we are trying to see whether difference as extreme is likely under this distribution). This is given by (mean = difference between groups means, se = pooled sd / sqrt(n))
-
-As you can see, a major part of this process is having data that fit the assumptions of your chosen distribution. What if this is not the case? 
 
 
 
