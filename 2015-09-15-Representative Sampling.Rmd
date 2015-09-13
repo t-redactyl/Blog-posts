@@ -1,9 +1,9 @@
 ---
-title: "Representative Sampling"
-layout: post
+title: Representative Sampling
 date: 2015-09-15
 comments: false
-categories: [Methodology, Data Simulations, R, dygraphs]
+tags: Methodology, Data Simulations, R, dygraphs
+keywords: rlanguage, simulations, sampling, methodology, data science
 ---
 
 Unless we are lucky enough to have access to an entire population and the capacity to analyse all of that data, we have to make do with [**samples**](https://en.wikipedia.org/wiki/Sample_(statistics)) from our population to make statistical inferences. Choosing a sample that is a good representation of your population is the heart of a quality analysis, as all of the fancy statistical tricks in the world can't make accurate conclusions from bad or biased data. In this blog post, I will discuss some key concepts in selecting a representative sample.

@@ -1,0 +1,128 @@
+---
+title: Two-Group Hypothesis Testing - Permutation Tests
+date: 2015-10-06
+comments: false
+tags: Statistics, R, Data Simulations, Hypothesis Testing
+keywords: rlanguage, permutation tests, simulations, data science, hypothesis testing
+---
+
+In the [last blog post]() I described how you could test whether the difference between the two means was statistically significant using an independent-samples t-test. (I will rely heavily on that blog post in this one, so I encourage you to at least skim last week's post before reading this.) I used the example that your company (a retail website selling children's toys) had launched two advertising campaigns and wanted to see whether they brought in different amounts of revenue. I cheekily assumed that the population distribution of amount spent per site visit was approximately normally distributed. However, this is unlikely to be the case - you are likely to have a large number of visitors that buy nothing, and then the majority of who buy something spending a small to moderate amount, and then a minority of visitors spending a lot in a visit.
+
+## What if my distributions are not normal?
+In cases like this, we can't use t-tests, so what can we do? We can instead rely on **non-parametric** methods. I will talk about one example, **permutation tests**, in this blog post. So how do they work? Well, when we collect our data (amount of money spent per visit), we assign it to a group depending on what advertising campaign the visit originated from. We then take the difference in the mean amount generated per campaign as our test statistic. What permutation tests suggest as their [**null hypothesis**]() is that randomly reassigning (or **permuting**) these group labels and then taking the mean of these new groups will give a mean difference similar to the one we got from our original groups. If we do this a large number of times, we can see where our original mean difference ranks amount the permuted mean differences. I'll talk you through this step-by-step.
+
+## Simulating some data
+To simulate the samples, I will resort to my much-loved method of creating Franken-distributions - in this case, I am merging elements of exponential and uniform distributions, plus adding some zeros to each distribution. This will give us that inflation around zero and a tapering off in the amount spent per purchase.
+
+```{r}
+data <- data.frame(group = rep(c("Campaign 1", "Campaign 2"), c(40, 40)), 
+                   alternative = numeric(length = 80))
+
+set.seed(567)
+#data$alternative[data$group == "Campaign 1"] <- c(rexp(30, rate = 0.5) * 100, runif(10, min = 50, max = 400))
+#data$alternative[data$group == "Campaign 2"] <- c(rexp(30, rate = 2) * 100, runif(10, min = 50, max = 400))
+
+data$alternative[data$group == "Campaign 1"] <- c(rep.int(0, 7), 
+                                                  rexp(33, rate = 1) * 100)
+data$alternative[data$group == "Campaign 2"] <- c(rep.int(0, 10), 
+                                                  rexp(30, rate = 2.5) * 100)
+```
+
+As you can see, the observations for campaign 1 are drawn from a different distribution to those from campaign 2, so the group labels are not arbitrary. You can see this in the histograms below, where the frequency of observations where nothing or very little was spent in a site visit are lower in campaign 1, and the maximum amount spent in any site visit was higher.
+
+```{r perm_alt_sample_plots, message = FALSE, echo = FALSE, fig.width = 10.5, fig.height = 4.5}
+# Load required packages
+require(ggplot2); require(gridExtra)
+
+# Set the colours for the graphs
+barfill <- "#4271AE"
+barlines <- "#1F3552"
+line1 <- "black"
+line2 <- "#FF3721"
+
+# Plotting histogram of sample 1
+g1 <- ggplot(data=as.data.frame(data$alternative[data$group == "Campaign 1"]), 
+             aes(data$alternative[data$group == "Campaign 1"])) + 
+        geom_histogram(binwidth = 20, fill = barfill, colour = barlines) +
+        xlab("Amount spent per site visit ($)") +
+        ylab("Frequency") +
+        theme_bw() +
+        ggtitle("Campaign 1") + 
+        theme(plot.title = element_text(lineheight=1.1, face="bold")) 
+            
+# Plotting histogram of sample 2
+g2 <- ggplot(data=as.data.frame(data$alternative[data$group == "Campaign 2"]), 
+             aes(data$alternative[data$group == "Campaign 2"])) + 
+        geom_histogram(binwidth = 20, fill = barfill, colour = barlines) +
+        xlab("Amount spent per site visit ($)") +
+        ylab("Frequency") +
+        theme_bw() +
+        ggtitle("Campaign 2") + 
+        theme(plot.title = element_text(lineheight=1.1, face="bold"))
+
+# Printing histograms
+grid.arrange(g1, g2, nrow = 1, ncol = 2)
+```
+
+## Creating the test statistic
+The next step is creating the test statistic to assess whether the difference between the campaign's revenue is meaningfully different. This is simpler than in the last post - we can use the raw mean difference.
+
+```{r}
+diff.means <- mean(data$alternative[data$group == "Campaign 1"]) - 
+                mean(data$alternative[data$group == "Campaign 2"])
+```
+
+The test statistic is `r round(diff.means, 2)`, which indicates that visitors spent $`r round(diff.means, 2)` more per site visit if they came via an ad from campaign 1.
+
+## Permuting the group labels
+
+```{r}
+# Create a function that randomly reassigns each observation to a different group and then takes the mean difference between these new groups.
+one.test <- function(grouping, variable) {
+                resampled.group <- sample(grouping)
+                mean(variable[resampled.group == "Campaign 2"]) - 
+                    mean(variable[resampled.group == "Campaign 1"])
+            }
+
+# Example of how resampling works:
+data$resampled.group <- sample(data$group)
+rs.mean <- mean(data$alternative[data$resampled.group == "Campaign 2"]) - 
+            mean(data$alternative[data$resampled.group == "Campaign 1"])
+head(data[ , c("group", "resampled.group", "alternative")])
+```
+
+What we've done here is randomly reassign the group labels and take the mean difference of these new groups. The mean difference of this particular permutation is `r round(rs.mean, 2)`, compared to our test statistic of `r round(diff.means, 2)`. We'll now repeat this permutation process 1,000 times to get a distribution of the mean difference of the permuted groups.
+
+```{r}
+perm.means <- replicate(1000, one.test(data$group, data$alternative))
+```
+
+## Rejecting or accepting the null hypothesis
+To check whether your test statistic is statistically different from 0, we simply check how it ranks compared to the permuted means:
+
+```{r}
+sig <- sum(perm.means > diff.means)
+```
+
+The number of permuted mean differences that exceeded the true mean difference was `r sig`. As there were 1,000 permutations, the significance level 1/1001, or p = `r round(1/1001, 3)`. As this is less than 0.05, this means that campaign 1 generates significantly more income than campaign 2 per site visit.
+
+```{r permutation_plot, message = FALSE, echo = FALSE, fig.width = 10.5, fig.height = 4.5}
+mean <- data.frame(Means="Test statistic", vals = diff.means)
+
+g1 <- ggplot(data=as.data.frame(perm.means), aes(perm.means)) + 
+        geom_histogram(binwidth = 20, fill = barfill, colour = barlines) +
+        xlab("Permuted Means") +
+        ylab("Frequency") +
+        theme_bw() +
+        ggtitle("Distribution of Permuted Means") + 
+        theme(plot.title = element_text(lineheight=1.1, face="bold")) +
+        geom_vline(data=mean, aes(xintercept=vals, linetype = Means, 
+                             colour = Means), size = 1, show_guide = TRUE) + 
+        scale_color_manual(values=c("Test statistic" = line2))
+g1
+```
+
+## Take away message
+
+
+As part of writing this post, I heavily borrowed from the code used in [Thomas Lumley and Ken Rices' presentation](http://faculty.washington.edu/kenrice/sisg/SISG-08-06.pdf) for the Summer Institute in Statistical Genetics, and used code and explanations from [Charlie Geyer's tutorial](http://www.stat.umn.edu/geyer/old/5601/examp/perm.html) from his class at University of Minnesota, Twin Cities, 
