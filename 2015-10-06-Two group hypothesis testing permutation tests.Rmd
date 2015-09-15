@@ -123,6 +123,6 @@ g1
 ```
 
 ## Take away message
-
+Think about whether comparing means is sensible when the data are so skewed? Think about whether there may be multiple distributions (low versus high spenders, no versus some spending).
 
 As part of writing this post, I heavily borrowed from the code used in [Thomas Lumley and Ken Rices' presentation](http://faculty.washington.edu/kenrice/sisg/SISG-08-06.pdf) for the Summer Institute in Statistical Genetics, and used code and explanations from [Charlie Geyer's tutorial](http://www.stat.umn.edu/geyer/old/5601/examp/perm.html) from his class at University of Minnesota, Twin Cities, 

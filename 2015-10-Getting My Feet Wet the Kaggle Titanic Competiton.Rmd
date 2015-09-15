@@ -1,0 +1,14 @@
+---
+title: Getting My Feet Wet - the Titanic Kaggle Competition
+date: 
+comments: false
+tags: Machine Learning, R, Kaggle
+keywords: rlanguage, data science, 
+---
+
+```{r}
+
+
+```
+
+Side note: I couldn't install Rattle on my Mac until I found this [tutorial](http://marcoghislanzoni.com/blog/2014/08/29/solved-installing-rattle-r-3-1-mac-os-x-10-9/), which solved the issues perfectly.

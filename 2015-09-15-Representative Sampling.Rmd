@@ -2,7 +2,7 @@
 title: Representative Sampling
 date: 2015-09-15
 comments: false
-tags: Methodology, Data Simulations, R, dygraphs
+tags: Methodology, Data Simulations, R
 keywords: rlanguage, simulations, sampling, methodology, data science
 ---
 
@@ -10,7 +10,7 @@ Unless we are lucky enough to have access to an entire population and the capaci
 <!--more-->
 
 ## First things first: What is your population of interest?
-Obviously it is a bit tricky to get a representative sample if you're not sure what population you're trying to represent, so the first step is tp carefully consider this question. In the two previous blog posts ([here](http://t-redactyl.github.io/blog/2015/09/A-Gentle-Introduction-to-the-Standard-Error-of-the-Mean.html) and here), I used the example that your company wanted you to assess the mean daily number of page views their website receives. Well, _what_ mean daily page views do they want to know about? 
+Obviously it is a bit tricky to get a representative sample if you're not sure what population you're trying to represent, so the first step is to carefully consider this question. In the two previous blog posts ([here]({filename}2015-09-01-A-Gentle-Introduction-to-the-Standard-Error-of-the-Mean.md) and [here]({filename}2015-09-08-a-gentle-introduction-to-bootstrapping.md)), I used the example that your company wanted you to assess the mean daily number of page views their website receives. Well, **what** mean daily page views do they want to know about? 
 
 Let's consider some complications to that question. The first is **seasonality.** Your website might receive more hits at certain times of year. Do we want to include or exclude these periods from our population? Another consideration is the **demographic profile** of the people visiting your website. Are we interested in all visitors? Or do we want visitors of a certain sex, age group or region? A final consideration is whether there has been some sort of **change in condition** that may have increased the visitors to the site. For example, was there an advertising campaign launched recently? Has the website added additional languages which mean a broader audience can access it? Does the website sell a product that now ships to additional places?
 
@@ -43,8 +43,6 @@ However, a sufficient sample size won't be enough if the data are not representa
 Let's simulate the number of page views our website received per day in 2014. As you can see in the R code below, I've included increased page views for our peak periods of Easter, Black Friday/Christmas, and the post-Christmas sales. 
 
 ```{r data_2014, message = FALSE}
-require(dygraphs); require(xts); require(magrittr)
-
 # Simulate some data for 2014, with mean page views of 220 per day.
 days <- seq(as.Date("2014/1/1"), as.Date("2014/12/31"), "days")
 page.views <- rpois(365, lambda = 220)
@@ -60,26 +58,12 @@ views$page.views[views$days >= "2014/04/01" & views$days <= "2014/04/21"] <- rpo
 views$page.views[views$days >= "2014/11/28" & views$days <= "2014/12/31"] <- rpois(34, lambda = 500)
 ```
 
-```{r dygraph_chunk, echo = FALSE, fig.width = 9, fig.height = 4.5}
-# Format data to dygraph format
-views$days <- as.POSIXlt(views$days, format="%Y-%m-%d")
-views_xts <- xts(views[,-1], order.by=views[,1])
-
-views_xts %>%
-    dygraph(main = "Website Page Views in 2014", ylab = "Daily page views") %>%
-    dyOptions(colors = "#546603") %>%
-    dyCSS("dygraph.css") %>%
-    dySeries("V1", label = "Page views") %>%
-    dyRangeSelector() %>%
-    dyLimit(220, color = "black")
-```
-
-```{r ggplot2_chunk, echo = FALSE, fig.width = 9, fig.height = 4.5}
-require(ggplot2); require(knitr)
+```{r ggplot2_chunk, echo = FALSE, message = FALSE, fig.width = 10.5, fig.height = 4.5}
+require(ggplot2); require(knitr); require(magrittr)
 opts_chunk$set(fig.path='/figure/',echo=FALSE, warning=FALSE, message=FALSE)
 
 qplot(days, page.views, data = views, geom = "line") %>%
-    add(geom_line(colour = "#546603")) %>%
+    add(geom_line(colour = "#4271AE")) %>%
     add(ggtitle('Website Page Views in 2014')) %>%
     add(xlab('')) %>%
     add(ylab('Daily page views')) %>%
@@ -87,12 +71,10 @@ qplot(days, page.views, data = views, geom = "line") %>%
     add(theme_bw())
 ```
 
-If you look at the graph above, you can see that for most of the year the page views sit fairly consistently around a mean of 220 (as shown in the dotted black line). If we sampled any time outside of the peak periods, we would be pretty safe in assuming we have a representative sample. However, what if we sampled between March 15 and April 14? We would catch some of the Easter peak period in our sample and our sample would no longer represent typical (non-peak) daily page views - instead, we would overestimate it by including observations from the peak period population in our sample. You can see this really easily if you move the slider to zoom in on these dates and mentally draw the line where the mean would go.
-
-(As an aside, this blog post gave me an excuse to play with the gorgeous dygraphs package - click [here](https://rstudio.github.io/dygraphs/index.html) to look at their extremely clear documentation, and [here](https://github.com/t-redactyl/Blog-posts/blob/master/2015-09-15-Representative%20Sampling.Rmd) for my Github repo for this blog post if you'd like the code for the above graph.)
+If you look at the graph above, you can see that for most of the year the page views sit fairly consistently around a mean of 220 (as shown in the dotted black line). If we sampled any time outside of the peak periods, we would be pretty safe in assuming we have a representative sample. However, what if we sampled between March 15 and April 14? We would catch some of the Easter peak period in our sample and our sample would no longer represent typical (non-peak) daily page views - instead, we would overestimate our page views by including observations from the peak period population in our sample.
 
 ## A final thing to consider: the method of measurement
-While not part of representative sampling per se, an extremely important and related concept is how the _thing you are measuring_ relates to your _concept of interest_. Why does our company want to know how many page views we get? Do they specifically want to know how many visitors they receive a day in order to plan things like server demand? Or do they want to extrapolate from number of visitors to comment on something like the popularity of the page? It is important to consider whether the measurement you take is a good reflection of your concept of interest before you make inferences based on your data. This falls under the branch of statistics known as [validity](https://en.wikipedia.org/wiki/Validity_%28statistics%29), which is again beyond the scope of this post but an extremely interesting topic. 
+While not part of representative sampling per se, an extremely important and related concept is how the **thing you are measuring** relates to your **concept of interest**. Why does our company want to know how many page views we get? Do they specifically want to know how many visitors they receive a day in order to plan things like server demand? Or do they want to extrapolate from number of visitors to comment on something like the popularity of the page? It is important to consider whether the measurement you take is a good reflection of what you are interested in before you make inferences based on your data. This falls under the branch of statistics known as [validity](https://en.wikipedia.org/wiki/Validity_%28statistics%29), which is again beyond the scope of this post but an extremely interesting topic. 
 
 ## The take away message
 I hope this has been a helpful introduction to picking a good sample, and a reminder that even when you have really big data, you can't escape basic considerations such as what your population is, and whether the variables you have can really answer your question!
