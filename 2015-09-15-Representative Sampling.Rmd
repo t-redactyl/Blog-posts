@@ -78,3 +78,5 @@ While not part of representative sampling per se, an extremely important and rel
 
 ## The take away message
 I hope this has been a helpful introduction to picking a good sample, and a reminder that even when you have really big data, you can't escape basic considerations such as what your population is, and whether the variables you have can really answer your question!
+
+Finally, the full code used to create the figures in this post is located in this [gist on my Github page](https://gist.github.com/t-redactyl/7c6875812dae4f3489a7).

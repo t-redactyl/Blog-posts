@@ -203,3 +203,4 @@ In the end, we found out that the two advertising campaigns generated significan
 ## Take away message
 In this post I talked you through a core technique in statistical inference, the two-sample t-test. While this is a very straightforward test to apply in R, choosing when it is an appropriate test to use and whether your data and hypotheses meet the assumptions of this test can be less clear. In addition, the results of a significant test must be interpreted in their practical context. I hope this has given you a starting point for analysing and interpreting the results of A/B testing and similar data.
 
+Finally, the full code used to create the figures in this post is located in this [gist on my Github page](https://gist.github.com/t-redactyl/c7a57f53ac1e4145d11b).

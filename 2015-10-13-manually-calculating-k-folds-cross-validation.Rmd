@@ -1,0 +1,151 @@
+---
+title: Using k-fold cross-validation to estimate out-of-sample accuracy
+date: 2015-10-14
+comments: false
+tags: Machine Learning, R, Kaggle
+keywords: rlanguage, machine learning, simulations, data science, kaggle, cross-validation
+output: 
+  html_document:
+    keep_md: true
+---
+
+One of the biggest issues when building an effective machine learning algorithm is [**overfitting**](https://en.wikipedia.org/wiki/Overfitting). Overfitting is where you build a model on your training data and it not only picks up the true relationship between the outcome and the predictors, but also random noise specific to your training set. As such, the model will have much better performance on the training set than any new data, and will not generalise well outside the training set. In order to gauge the true predictive ability of our model on novel data, we need to build some way of estimating the out-of-sample accuracy into our model generation process. I'll discuss one way of doing this, [**k-fold cross-validation**](https://en.wikipedia.org/wiki/Cross-validation_(statistics)), in this blog post, using the [**Kaggle Titanic tutorial dataset**](https://www.kaggle.com/c/titanic).
+
+## Building a model
+
+Firstly, we'll load in our data:
+
+```{r loading_in_titanic_train_data}
+train <- read.csv(url("http://s3.amazonaws.com/assets.datacamp.com/course/Kaggle/train.csv"))
+```
+
+and do a quick screening:
+
+```{r examine_variables, message = FALSE, results = 'hide'}
+str(train)
+table(train$Survived)
+prop.table(table(train$Survived))
+```
+
+We have `r nrow(train)` observations, with `r table(train$Survived)[[1]]` (`r round(prop.table(table(train$Survived))[[1]] * 100)`%) people who died, and `r table(train$Survived)[[2]]` (`r round(prop.table(table(train$Survived))[[2]] * 100)`%) people who survived.
+
+Information on the variables in the Titantic dataset can be found [here](https://www.kaggle.com/c/titanic/data). For our model, we'll use a decision-tree model with passenger class ("Pclass"), sex ("Sex"), age ("Age"), number of siblings or spouses aboard ("SibSp"), number of parents or children aboard ("Parch"), the passenger fare ("Fare") and port of embarkation (C = Cherbourg; Q = Queenstown; S = Southampton) ("Embarked").  I used this model as it is one of those used in the [excellent DataCamp R Titantic tutorial](https://www.datacamp.com/courses/kaggle-tutorial-on-machine-learing-the-sinking-of-the-titanic), so if you're new to machine learning you can work your way through that to work out how we got to this point. You can see the model displayed in the figure below.
+
+```{r fit_single_model, warning = FALSE, message = FALSE, fig.width = 10.5, fig.height = 8}
+library(rpart); library(caret)
+model.single <- rpart(Survived ~ Pclass + Sex + Age + SibSp + Parch + Fare + Embarked, 
+                      data = train, method = "class")
+predict.single <- predict(object = model.single, newdata = train, type = "class")
+
+library(RGtk2); library(cairoDevice); library(rattle); library(rpart.plot); library(RColorBrewer)
+fancyRpartPlot(model.single)
+```
+
+So how did our model perform on the data it was trained on?
+
+```{r in_sample_accuracy}
+confusionMatrix(predict.single, train$Survived)
+```
+
+We can see that our model has an accuracy of `r round(confusionMatrix(predict.single, train$Survived)$overall[[1]], 3)` when we apply it back to the data it was trained on. However, this is likely to be an overestimate. How do we get an idea of what the true accuracy rate would be on new data?
+
+## Estimating out-of-sample accuracy
+
+In order to estimate the out-of-sample accuracy, we need to train the data on one dataset, and then apply it to a new dataset. The usual way to do this is to split the dataset into a training set and a testing set, build the model on the training set, and apply it to the testing set to get the accuracy of the model on new data. However, this method relies on having large datasets. In the case of smaller datasets (such as our Titanic data), an alternative to estimate out-of-sample accuracy is cross-validation. Cross-validation is kind of the same idea as creating single training and testing sets; however, because a single training and testing set would yield unstable estimates due to their limited number of observations, you create several testing and training sets using different parts of the data and average their estimates of model fit.
+
+## k-fold cross-validation
+
+In k-fold cross-validation, we create the testing and training sets by splitting the data into $k$ equally sized subsets. We then treat a single subsample as the testing set, and the remaining data as the training set. We then run and test models on all $k$ datasets, and average the estimates. Let's try it out with 5 folds:
+
+```{r single_k_fold}
+k.folds <- function(k) {
+    folds <- createFolds(train$Survived, k = k, list = TRUE, returnTrain = TRUE)
+    for (i in 1:k) {
+        model <- rpart(Survived ~ Pclass + Sex + Age + SibSp + Parch + Fare + Embarked, 
+                       data = train[folds[[i]],], method = "class")
+        predictions <- predict(object = model, newdata = train[-folds[[i]],], type = "class")
+        accuracies.dt <- c(accuracies.dt, 
+                           confusionMatrix(predictions, train[-folds[[i]], ]$Survived)$overall[[1]])
+    }
+    accuracies.dt
+}
+
+set.seed(567)
+accuracies.dt <- c()
+accuracies.dt <- k.folds(5)
+accuracies.dt
+
+mean.accuracies <- mean(accuracies.dt)
+```
+
+As you can see above, this function produces a vector containing the accuracy scores for each of the 5 cross-validations. If we take the mean and standard deviation of this vector, we get an estimate of our out-of-sample accuracy. In this case, this is estimated to be `r round(mean.accuracies, 3)`, which is quite a bit lower than our in-sample accuracy estimate.
+
+## Repeated k-fold cross-validation
+
+However, it is a bit dodgy taking a mean of 5 samples. On the other hand, splitting our sample into more than 5 folds would greatly reduce the stability of the estimates from each cross-validation. A way around this is to do repeated k-folds cross-validation. To do this, we simply repeat the k-folds cross-validation a large number of times and take the mean of this estimate. An advantage of this approach is that we can also get an estimate of the precision of this out-of-sample accuracy by creating a confidence interval. We'll do 200 replications so we end up with a nice round 1,000 out-of-sample accuracy estimates.
+
+```{r repeated_k_folds_cross_validation, cache = TRUE}
+set.seed(567)
+v <- c()
+v <- replicate(200, k.folds(5))
+accuracies.dt <- c()
+for (i in 1 : 200) { 
+    accuracies.dt <- c(accuracies.dt, v[,i])
+}
+
+mean.accuracies <- mean(accuracies.dt)
+lci <- mean(accuracies.dt) - sd(accuracies.dt) * 1.96
+uci <- mean(accuracies.dt) + sd(accuracies.dt) * 1.96
+```
+
+This time, we get an estimate of `r round(mean(accuracies.dt), 3)`, which is pretty close to our estimate from a single k-fold cross-validation. As you can see from our the histogram below, the distribution of our accuracy estimates is roughly normal, so we can say that the 95% confidence interval indicates that the true out-of-sample accuracy is likely between `r round(lci, 3)` and `r round(uci, 3)`.
+
+```{r, message = FALSE, echo = FALSE, fig.width = 12, fig.height = 6}
+require(ggplot2)
+
+line1 <- data.frame(Values="95% CI", vals = c(lci, uci))
+line2 <- data.frame(Values="Mean accuracy", vals = mean(accuracies.dt))
+lines <- rbind(line1, line2)
+
+# Set the colours for the graphs
+barfill <- "#4271AE"
+barlines <- "#1F3552"
+col1 <- "black"
+col2 <- "#FF3721"
+
+ggplot(data=as.data.frame(accuracies.dt), aes(accuracies.dt)) + 
+        geom_histogram(aes(y = ..density..), 
+                       binwidth = 0.02, fill = barfill, colour = barlines) +
+    xlab("Accuracy estimates") +  
+    ylab("Density") + 
+    theme_bw() +
+    geom_vline(data=lines, aes(xintercept=vals, linetype = Values, 
+                        colour = Values), size = 1, show_guide = TRUE) + 
+    scale_color_manual(values=c("95% CI" = col1, 
+                                "Mean accuracy" = col2))
+```
+
+## Testing out the model in Kaggle
+
+Finally, let's see how our out-of-sample accuracy estimate performs on the unlabelled Kaggle test set. First, let's apply the model to the test set, then export a .csv file containing only the passenger ID and our prediction. We then submit this to Kaggle.
+
+```{r applying_to_kaggle_data}
+# Read in test data
+test <- read.csv(url("http://s3.amazonaws.com/assets.datacamp.com/course/Kaggle/test.csv"))
+
+# Apply the model to the test data
+predict.test <- predict(object = model.single, newdata = test, type = "class")
+
+# Create a data frame with just PassengerId and Survived to submit to Kaggle. Note that I assign "predict.test" to "Survived"
+titanic_solution <- data.frame(PassengerId = test$PassengerId, Survived = predict.test)
+
+# Write your solution to a csv file with the name my_solution.csv
+write.csv(titanic_solution, file = "titanic_solution.csv", row.names = FALSE)
+```
+
+We end up with a final accuracy rating on Kaggle of 0.785, which is lower than our mean accuracy estimate, but within our 95% confidence interval. We can also see that it is substantially lower than the in-sample accuracy we got at the beginning of this post, indicating that the model is overfitting the training data. 
+
+
+## Take-away message
+
+I hope this has been a helpful introduction to the importance of estimating the out-of-sample accuracy of your machine learning algorithm, and how to do so on smaller datasets. While it is preferrable to estimate out-of-sample accuracy on a new testing dataset, time and monetary constraints can limit how easily you can collect large labelled datasets. As such, cross-validation is an important tool in the data scientists toolkit.

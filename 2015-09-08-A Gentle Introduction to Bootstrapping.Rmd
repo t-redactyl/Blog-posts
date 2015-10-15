@@ -179,7 +179,7 @@ f_sem <- sqrt(mean(sample_np) / 30)
 In this case, the SEM we obtain using bootstrapping is `r round(b_sem, 1)`, compared to `r round(f_sem, 1)` using the formula. We can see that the formula-based SEM slightly underestimates the amount of fuzziness in our estimate of the sample mean (as demonstrated for &plusmn;1 SEMs below). In this case we would be better off using a bootstrapped SEM rather than calculating it using the formula for the Poisson distribution.
 
 ```{r bootstrap_plot_4, echo = FALSE, fig.width = 10.5, fig.height = 4.5}
-# Plotting a histogram with the +/- 1 and 2 standard error intervals.
+# Plotting a histogram with the +/- 1 standard error intervals.
 sem1 <- data.frame(SEMs="+/- 1 SEM (bootstrap)", 
                    vals = c(mean(mn_vector_np) - b_sem, mean(mn_vector_np) + b_sem))
 sem2 <- data.frame(SEMs="+/- 1 SEM (formula)", 
@@ -208,4 +208,4 @@ Bootstrapping is a great technique to use when you are not sure if your data mee
 
 Some of the points and code in this blog post are adapted from the excellent [Statistical Inference](https://www.coursera.org/course/statinference) unit on Coursera by [Brian Caffo](https://twitter.com/bcaffo), [Jeff Leek](https://twitter.com/jtleek) and [Roger Peng](https://twitter.com/rdpeng).
 
-Finally, the full code used to create the figures in this post is located in this [repo on my Github page](https://github.com/t-redactyl/Blog-posts).
+Finally, the full code used to create the figures in this post is located in this [gist on my Github page](https://gist.github.com/t-redactyl/5ffef9200ea51cc81510).

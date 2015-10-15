@@ -1,34 +1,31 @@
 ---
 title: Two-Group Hypothesis Testing - Permutation Tests
-date: 2015-10-06
+date: 2015-10-07
 comments: false
 tags: Statistics, R, Data Simulations, Hypothesis Testing
 keywords: rlanguage, permutation tests, simulations, data science, hypothesis testing
 ---
 
-In the [last blog post]() I described how you could test whether the difference between the two means was statistically significant using an independent-samples t-test. (I will rely heavily on that blog post in this one, so I encourage you to at least skim last week's post before reading this.) I used the example that your company (a retail website selling children's toys) had launched two advertising campaigns and wanted to see whether they brought in different amounts of revenue. I cheekily assumed that the population distribution of amount spent per site visit was approximately normally distributed. However, this is unlikely to be the case - you are likely to have a large number of visitors that buy nothing, and then the majority of who buy something spending a small to moderate amount, and then a minority of visitors spending a lot in a visit.
+In the [last blog post]({filename}2015-09-30-two-group-hypothesis-testing-t-tests.md) I described how you could test whether the difference between two groups was statistically significant using an independent-samples t-test. (I will rely heavily on that blog post in this one, so I encourage you to at least skim it before reading this.) I used the example that your company (a retail website selling children's toys) had launched two advertising campaigns and wanted to see whether they brought in different amounts of revenue. I cheekily assumed that the population distribution of amount spent per site visit was approximately normally distributed. However, this is unlikely to be the case - you are much more likely to have a large number of visitors that buy nothing, a smaller number spending a small to moderate amount, and then a minority of visitors spending a lot.
 
 ## What if my distributions are not normal?
-In cases like this, we can't use t-tests, so what can we do? We can instead rely on **non-parametric** methods. I will talk about one example, **permutation tests**, in this blog post. So how do they work? Well, when we collect our data (amount of money spent per visit), we assign it to a group depending on what advertising campaign the visit originated from. We then take the difference in the mean amount generated per campaign as our test statistic. What permutation tests suggest as their [**null hypothesis**]() is that randomly reassigning (or **permuting**) these group labels and then taking the mean of these new groups will give a mean difference similar to the one we got from our original groups. If we do this a large number of times, we can see where our original mean difference ranks amount the permuted mean differences. I'll talk you through this step-by-step.
+In cases like this, we can't use a t-test, so what can we do? We can instead rely on [**non-parametric**](https://en.wikipedia.org/wiki/Nonparametric_statistics) methods. I will talk about one example, [**permutation tests**](https://en.wikipedia.org/wiki/Resampling_(statistics)), in this blog post. So how do they work? Well, when we collect our data (amount of money spent per visit), we assign it to a group depending on what advertising campaign the visit originated from. We then take the difference in the mean amount generated per campaign as our test statistic. What permutation tests suggest as their [**null hypothesis**](https://en.wikipedia.org/wiki/Null_hypothesis) is that randomly reassigning (or **permuting**) these group labels and then taking the mean difference between these new groups will give a mean difference similar to the one we got from our original groups. In other words, the null hypothesis is that the group labels are arbitrary, and that we could get a mean difference of that size or bigger by chance alone. The [**alternative hypothesis**]() is that the group labels are **not** arbitrary, and a mean difference of that size didn't occur by chance. In permutation tests, we therefore permute the group labels a large number of times, and see where our original mean difference ranks among the permuted mean differences. This is a bit confusing, but I'll talk you through it step-by-step.
 
 ## Simulating some data
-To simulate the samples, I will resort to my much-loved method of creating Franken-distributions - in this case, I am merging elements of exponential and uniform distributions, plus adding some zeros to each distribution. This will give us that inflation around zero and a tapering off in the amount spent per purchase.
+As with the last post, let's say we collected a sample of 40 site visits for each campaign. To simulate the samples, I will resort to my much-loved method of creating Franken-distributions - in this case, I am merging elements of exponential and uniform distributions, plus throwing in some zero counts. This will give us some inflation around zero and a tapering off as the amount spent per visit increases, which is a far more realistic representation of the sort of data we'd collect.
 
-```{r}
+```{r simulating_data}
 data <- data.frame(group = rep(c("Campaign 1", "Campaign 2"), c(40, 40)), 
-                   alternative = numeric(length = 80))
+                   amount.purchased = numeric(length = 80))
 
 set.seed(567)
-#data$alternative[data$group == "Campaign 1"] <- c(rexp(30, rate = 0.5) * 100, runif(10, min = 50, max = 400))
-#data$alternative[data$group == "Campaign 2"] <- c(rexp(30, rate = 2) * 100, runif(10, min = 50, max = 400))
-
-data$alternative[data$group == "Campaign 1"] <- c(rep.int(0, 7), 
+data$amount.purchased[data$group == "Campaign 1"] <- c(rep.int(0, 7), 
                                                   rexp(33, rate = 1) * 100)
-data$alternative[data$group == "Campaign 2"] <- c(rep.int(0, 10), 
+data$amount.purchased[data$group == "Campaign 2"] <- c(rep.int(0, 10), 
                                                   rexp(30, rate = 2.5) * 100)
 ```
 
-As you can see, the observations for campaign 1 are drawn from a different distribution to those from campaign 2, so the group labels are not arbitrary. You can see this in the histograms below, where the frequency of observations where nothing or very little was spent in a site visit are lower in campaign 1, and the maximum amount spent in any site visit was higher.
+As you can see in the histograms below, the distribution of observations for campaign 1 appears to differ from that for campaign 2, so the group labels are not likely to be arbitrary. The frequency of observations where nothing or very little was spent in a visit is lower in campaign 1, and the maximum amount spent in any visit was higher.
 
 ```{r perm_alt_sample_plots, message = FALSE, echo = FALSE, fig.width = 10.5, fig.height = 4.5}
 # Load required packages
@@ -41,8 +38,8 @@ line1 <- "black"
 line2 <- "#FF3721"
 
 # Plotting histogram of sample 1
-g1 <- ggplot(data=as.data.frame(data$alternative[data$group == "Campaign 1"]), 
-             aes(data$alternative[data$group == "Campaign 1"])) + 
+g1 <- ggplot(data=as.data.frame(data$amount.purchased[data$group == "Campaign 1"]), 
+             aes(data$amount.purchased[data$group == "Campaign 1"])) + 
         geom_histogram(binwidth = 20, fill = barfill, colour = barlines) +
         xlab("Amount spent per site visit ($)") +
         ylab("Frequency") +
@@ -51,8 +48,8 @@ g1 <- ggplot(data=as.data.frame(data$alternative[data$group == "Campaign 1"]),
         theme(plot.title = element_text(lineheight=1.1, face="bold")) 
             
 # Plotting histogram of sample 2
-g2 <- ggplot(data=as.data.frame(data$alternative[data$group == "Campaign 2"]), 
-             aes(data$alternative[data$group == "Campaign 2"])) + 
+g2 <- ggplot(data=as.data.frame(data$amount.purchased[data$group == "Campaign 2"]), 
+             aes(data$amount.purchased[data$group == "Campaign 2"])) + 
         geom_histogram(binwidth = 20, fill = barfill, colour = barlines) +
         xlab("Amount spent per site visit ($)") +
         ylab("Frequency") +
@@ -65,52 +62,54 @@ grid.arrange(g1, g2, nrow = 1, ncol = 2)
 ```
 
 ## Creating the test statistic
-The next step is creating the test statistic to assess whether the difference between the campaign's revenue is meaningfully different. This is simpler than in the last post - we can use the raw mean difference.
+The next step is creating the test statistic to assess whether the difference between the campaigns' revenue is meaningfully different. This is simpler than in the last post - we can use the raw mean difference rather than standardising it.
 
 ```{r}
-diff.means <- mean(data$alternative[data$group == "Campaign 1"]) - 
-                mean(data$alternative[data$group == "Campaign 2"])
+diff.means <- mean(data$amount.purchased[data$group == "Campaign 1"]) - 
+              mean(data$amount.purchased[data$group == "Campaign 2"])
 ```
 
-The test statistic is `r round(diff.means, 2)`, which indicates that visitors spent $`r round(diff.means, 2)` more per site visit if they came via an ad from campaign 1.
+The test statistic is `r round(diff.means, 2)`, which indicates that visitors spent \$`r round(diff.means, 2)` more per visit if they came to the site via campaign 1.
 
 ## Permuting the group labels
+We'll now move on to the permutations. To illustrate how this works, I'll start with a single example.
 
-```{r}
+```{r permutation_function_and_example, warning = FALSE, message = FALSE}
 # Create a function that randomly reassigns each observation to a different group and then takes the mean difference between these new groups.
 one.test <- function(grouping, variable) {
                 resampled.group <- sample(grouping)
                 mean(variable[resampled.group == "Campaign 2"]) - 
-                    mean(variable[resampled.group == "Campaign 1"])
+                mean(variable[resampled.group == "Campaign 1"])
             }
 
 # Example of how resampling works:
+set.seed(567)
 data$resampled.group <- sample(data$group)
-rs.mean <- mean(data$alternative[data$resampled.group == "Campaign 2"]) - 
-            mean(data$alternative[data$resampled.group == "Campaign 1"])
-head(data[ , c("group", "resampled.group", "alternative")])
+rs.mean <- mean(data$amount.purchased[data$resampled.group == "Campaign 2"]) - 
+           mean(data$amount.purchased[data$resampled.group == "Campaign 1"])
+head(data[ , c("group", "resampled.group", "amount.purchased")])
 ```
 
-What we've done here is randomly reassign the group labels and take the mean difference of these new groups. The mean difference of this particular permutation is `r round(rs.mean, 2)`, compared to our test statistic of `r round(diff.means, 2)`. We'll now repeat this permutation process 1,000 times to get a distribution of the mean difference of the permuted groups.
+What we've done here is randomly reassigned the group labels and taken the mean difference of the amount purchased per visit of these new groups. You can see this by comparing the 'group' and 'resampled.group' columns in the table above. The mean difference of this particular permutation is `r round(rs.mean, 2)`, compared to our test statistic of `r round(diff.means, 2)`. We'll now repeat this permutation process 1,000 times to get a distribution of the mean difference of the permuted groups.
 
 ```{r}
-perm.means <- replicate(1000, one.test(data$group, data$alternative))
+perm.means <- replicate(1000, one.test(data$group, data$amount.purchased))
 ```
 
 ## Rejecting or accepting the null hypothesis
-To check whether your test statistic is statistically different from 0, we simply check how it ranks compared to the permuted means:
+To check whether your test statistic is statistically different from 0, we just check how it ranks compared to the permuted means:
 
 ```{r}
 sig <- sum(perm.means > diff.means)
 ```
 
-The number of permuted mean differences that exceeded the true mean difference was `r sig`. As there were 1,000 permutations, the significance level 1/1001, or p = `r round(1/1001, 3)`. As this is less than 0.05, this means that campaign 1 generates significantly more income than campaign 2 per site visit.
+The number of permuted mean differences that exceeded the true mean difference was `r sig`. As there were 1,000 permutations, the significance level is simply 1/1001, or _p_ = `r round(1/1001, 3)`. As this is less than 0.05, this means that campaign 1 generates significantly more income than campaign 2 per site visit.
 
 ```{r permutation_plot, message = FALSE, echo = FALSE, fig.width = 10.5, fig.height = 4.5}
 mean <- data.frame(Means="Test statistic", vals = diff.means)
 
 g1 <- ggplot(data=as.data.frame(perm.means), aes(perm.means)) + 
-        geom_histogram(binwidth = 20, fill = barfill, colour = barlines) +
+        geom_histogram(binwidth = 10, fill = barfill, colour = barlines) +
         xlab("Permuted Means") +
         ylab("Frequency") +
         theme_bw() +
@@ -123,6 +122,8 @@ g1
 ```
 
 ## Take away message
-Think about whether comparing means is sensible when the data are so skewed? Think about whether there may be multiple distributions (low versus high spenders, no versus some spending).
+This is a brief introduction to permutation tests, which is a family that includes well-known non-parametric methods such as the [Fisher's exact](https://en.wikipedia.org/wiki/Fisher%27s_exact_test) and [Wilcoxon rank-sum](https://en.wikipedia.org/wiki/Mann%E2%80%93Whitney_U_test) tests. These tests are a useful part of your statistical arsenal when your data don't fit the assumptions of parametric tests (as is often the case). However, these of course aren't a magical fix-all to your problems and must be used sensibly! As an example, a problem we might have could be that taking the mean of such skewed data is not particularly meaningful, therefore doing a test of mean differences does not make sense.
 
-As part of writing this post, I heavily borrowed from the code used in [Thomas Lumley and Ken Rices' presentation](http://faculty.washington.edu/kenrice/sisg/SISG-08-06.pdf) for the Summer Institute in Statistical Genetics, and used code and explanations from [Charlie Geyer's tutorial](http://www.stat.umn.edu/geyer/old/5601/examp/perm.html) from his class at University of Minnesota, Twin Cities, 
+As part of writing this post, I heavily borrowed from the code used in [Thomas Lumley and Ken Rices' presentation](http://faculty.washington.edu/kenrice/sisg/SISG-08-06.pdf) for the Summer Institute in Statistical Genetics, and used code and explanations from [Charlie Geyer's tutorial](http://www.stat.umn.edu/geyer/old/5601/examp/perm.html) from his class at University of Minnesota, Twin Cities.
+
+Finally, the full code used to create the figures in this post is located in this [gist on my Github page](https://gist.github.com/t-redactyl/3d993638a7d395b84958).

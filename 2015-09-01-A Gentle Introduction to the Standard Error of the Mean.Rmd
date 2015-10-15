@@ -168,4 +168,4 @@ As you can see, the SEM is a useful indication of how likely it is that your sam
 
 Much of the points and code in this blog post are adapted from the excellent [Statistical Inference](https://www.coursera.org/course/statinference) unit on Coursera by [Brian Caffo](https://twitter.com/bcaffo), [Jeff Leek](https://twitter.com/jtleek) and [Roger Peng](https://twitter.com/rdpeng). This course gives a far more comprehensive coverage of this material and is highly recommended.
 
-Finally, the full code used to create the figures in this post is located in this [repo on my Github page](https://github.com/t-redactyl/Blog-posts).
+Finally, the full code used to create the figures in this post is located in this [gist on my Github page](https://gist.github.com/t-redactyl/3bbe9623a136db249268).
