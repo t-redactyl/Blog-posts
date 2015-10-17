@@ -7,8 +7,8 @@ pedestrians <- read.csv(url("https://data.melbourne.vic.gov.au/api/views/b2ak-tr
 # Screening data
 head(pedestrians)
 table(pedestrians$Sensor_Name)
-summary(pedestrians$Hourly_Counts[pedestrians$Sensor_Name == "Bourke Street Mall (North)"])
-pedestrians$Date_Time[pedestrians$Hourly_Counts == 5573]
+tapply(pedestrians$Hourly_Counts, pedestrians$Sensor_Name, function(x) sum(is.na(x)))
+
 
 # Converting date variable into actual date/time format
 pedestrians$date <- as.POSIXct(as.character(pedestrians$Date_Time), format = "%d-%b-%Y %H:%M")
@@ -190,7 +190,7 @@ ggplot(data=av_peds, aes(x=time, y=mean_peds, group=collapsed_sensors, colour=co
 facet_grid(. ~ weekend)
 
 # Just the stations
-station <- av_peds[av_peds$collapsed_sensors %in% c("Flinders Street Station", "Flagstaff Station", 
+stations <- av_peds[av_peds$collapsed_sensors %in% c("Flinders Street Station", "Flagstaff Station", 
                                                     "Melbourne Central", "Southern Cross Station"), ]
 
 # Graph
@@ -226,7 +226,13 @@ ggplot(data=cbd, aes(x=time, y=mean_peds, group=collapsed_sensors, colour=collap
     geom_line() +
     geom_point()
 
+# Middle of the city
+swanston.street <- av_peds[av_peds$collapsed_sensors %in% c("Bourke Street Mall", "Chinatown-Swanston St (North)", 
+                                                            "Swanston Street South", "Melbourne Central",
+                                                            "Flinders Street Station"), ]
 
+city.east <-  av_peds[av_peds$collapsed_sensors %in% c("Alfred Place", "Lonsdale St-Spring St (West)", 
+                                                       "Collins Place", "Flinders St-Spring Street"), ]
 
 # Idea:
     # Motivation - areas of congestion in the city
