@@ -1,12 +1,12 @@
 ---
-title: Using data to plan your route through Melbourne CBD
+title: Using data to avoid the crowds in Melbourne CBD
 date: 2015-10-21
 comments: false
 tags: R, Public Data
 keywords: rlanguage, permutation tests, simulations, data science, hypothesis testing
 ---
 
-Melbourne CBD is a beautiful place with a lot of great restaurants, cafes, shopping and attractions. Unfortunately, it is also extremely congested at times, which can sap a bit of enjoyment for a nerd like me. Imagine my delight when I found that the City of Melbourne has a [publically available dataset](https://data.melbourne.vic.gov.au/Transport-Movement/Pedestrian-Counts/b2ak-trbp) of the number of pedestrians per hour for major CBD locations. The topic of this week's blog post is therefore how to plan your journey around the city to avoid the crowds as best as possible.
+I love visiting the CBD of Melbourne - it is a beautiful place with great restaurants, cafes, shopping and museums. Unfortunately, as with any big city it can get really crowded at times, which can sap a bit of enjoyment for a nerd like me! Imagine my delight when I found that the City of Melbourne has a [publicly available dataset](https://data.melbourne.vic.gov.au/Transport-Movement/Pedestrian-Counts/b2ak-trbp) of the number of pedestrians per hour for major CBD locations. The topic of this week's blog post is therefore to help you to plan your journey around the city to avoid the crowds as best as possible.
 
 ```{r melbourne_pics, cache = TRUE, fig.width=12, echo=FALSE}
 library(png)
@@ -15,21 +15,19 @@ melbourne.sights <- readPNG("/Users/jburchell/Documents/Blog-posts/Melbourne sig
 grid.raster(melbourne.sights)
 ```
 
-Some of the beautiful sights around Melbourne CBD (clockwise from top left): [Flinders Street Station](https://commons.wikimedia.org/wiki/File:Melbourne_Flinders_St._Station.jpg), [Federation Square](https://commons.wikimedia.org/wiki/File:Federation_Square,_Melbourne.jpg), [the State Library of Victoria](https://commons.wikimedia.org/wiki/File:StateLibraryofVictoria,_Oct_2005.jpg) and [Victorian Parliament House](https://commons.wikimedia.org/wiki/File:Parliament_House_Melbourne_2010.jpg).
+Some of the sights around Melbourne CBD (clockwise from top left): [Flinders Street Station](https://commons.wikimedia.org/wiki/File:Melbourne_Flinders_St._Station.jpg), [Federation Square](https://commons.wikimedia.org/wiki/File:Federation_Square,_Melbourne.jpg), [the State Library of Victoria](https://commons.wikimedia.org/wiki/File:StateLibraryofVictoria,_Oct_2005.jpg) and [Victorian Parliament House](https://commons.wikimedia.org/wiki/File:Parliament_House_Melbourne_2010.jpg).
 
 ## Reading in and preparing the data
 
 The data were downloaded...
 
 ```{r loading_data, cache = TRUE}
-# Importing data
 pedestrians <- read.csv(url("https://data.melbourne.vic.gov.au/api/views/b2ak-trbp/rows.csv"))
 ```
 
 ... and screened. Note that none of the sensor sites had missing data.
 
 ```{r screening_data, message = FALSE, results = 'hide'}
-# Screening data
 head(pedestrians)
 table(pedestrians$Sensor_Name)
 tapply(pedestrians$Hourly_Counts, pedestrians$Sensor_Name, function(x) sum(is.na(x)))
@@ -40,74 +38,87 @@ In order to increase the relevance of the data to current pedestrian traffic, I 
 
 ```{r limiting_to_2_years, cache = TRUE, message = FALSE}
 # Converting date variable into actual date/time format
-pedestrians$date <- as.POSIXct(as.character(pedestrians$Date_Time), format = "%d-%b-%Y %H:%M")
+pedestrians$date <- as.POSIXct(as.character(pedestrians$Date_Time), 
+                               format = "%d-%b-%Y %H:%M")
 p.subset <- subset(pedestrians, date >= "2013-10-01 00:00:00")
 ```
 
 ### Discarding public holidays and public event days
-To get the "normal" pedestrian traffic in the CBD, I removed all Victorian public holidays, as well as significant festivals and public events that change traffic to the city. These include New Year's Eve and New Year's Day, Australia Day, the White Night Festival, Labour Day/Moomba Festival parade, Easter long weekend, ANZAC day, Queen's birthday, AFL Grand Final parade, Melbourne Cup, Christmas Day and Boxing Day.
+To get the "normal" pedestrian traffic in the CBD, I removed all Victorian public holidays, as well as significant festivals and public events that might change how many people come into the city. These include New Year's Eve and New Year's Day, Australia Day, the White Night Festival, Labour Day/Moomba Festival parade, Easter long weekend, ANZAC day, Queen's birthday, AFL Grand Final parade, Melbourne Cup, Christmas Day and Boxing Day.
 
 ```{r getting_rid_public_holidays}
-# Get rid of public holidays and special event days
-p.subset <- with(p.subset, p.subset[!(date >= "2013-11-05 00:00:00" & date <= "2013-11-05 23:00:00") & 
-                                    !(date >= "2013-12-25 00:00:00" & date <= "2013-12-26 23:00:00") &
-                                    !(date >= "2013-12-31 00:00:00" & date <= "2014-01-01 23:00:00") &
-                                    !(date >= "2014-01-27 00:00:00" & date <= "2014-01-27 23:00:00") &
-                                    !(date >= "2014-02-22 00:00:00" & date <= "2014-02-23 23:00:00") &
-                                    !(date >= "2014-03-10 00:00:00" & date <= "2014-03-10 23:00:00") &
-                                    !(date >= "2014-04-18 00:00:00" & date <= "2014-04-21 23:00:00") &
-                                    !(date >= "2014-04-25 00:00:00" & date <= "2014-04-25 23:00:00") &
-                                    !(date >= "2014-06-09 00:00:00" & date <= "2014-06-09 23:00:00") &
-                                    !(date >= "2014-09-26 00:00:00" & date <= "2014-09-26 23:00:00") &
-                                    !(date >= "2014-11-04 00:00:00" & date <= "2014-11-04 23:00:00") &
-                                    !(date >= "2014-12-25 00:00:00" & date <= "2014-12-26 23:00:00") &
-                                    !(date >= "2014-12-31 00:00:00" & date <= "2015-01-01 23:00:00") &
-                                    !(date >= "2015-01-26 00:00:00" & date <= "2015-01-26 23:00:00") &
-                                    !(date >= "2015-02-21 00:00:00" & date <= "2015-02-22 23:00:00") &
-                                    !(date >= "2015-03-09 00:00:00" & date <= "2015-03-09 23:00:00") &
-                                    !(date >= "2015-04-03 00:00:00" & date <= "2015-04-06 23:00:00") & 
-                                    !(date >= "2015-04-25 00:00:00" & date <= "2015-04-25 23:00:00") &
-                                    !(date >= "2015-06-08 00:00:00" & date <= "2015-06-08 23:00:00") &
-                                    !(date >= "2015-10-02 00:00:00" & date <= "2015-10-02 23:00:00"), ])
+p.subset <- with(p.subset, p.subset
+                 [!(date >= "2013-11-05 00:00:00" & date <= "2013-11-05 23:00:00") & 
+                  !(date >= "2013-12-25 00:00:00" & date <= "2013-12-26 23:00:00") &
+                  !(date >= "2013-12-31 00:00:00" & date <= "2014-01-01 23:00:00") &
+                  !(date >= "2014-01-27 00:00:00" & date <= "2014-01-27 23:00:00") &
+                  !(date >= "2014-02-22 00:00:00" & date <= "2014-02-23 23:00:00") &
+                  !(date >= "2014-03-10 00:00:00" & date <= "2014-03-10 23:00:00") &
+                  !(date >= "2014-04-18 00:00:00" & date <= "2014-04-21 23:00:00") &
+                  !(date >= "2014-04-25 00:00:00" & date <= "2014-04-25 23:00:00") &
+                  !(date >= "2014-06-09 00:00:00" & date <= "2014-06-09 23:00:00") &
+                  !(date >= "2014-09-26 00:00:00" & date <= "2014-09-26 23:00:00") &
+                  !(date >= "2014-11-04 00:00:00" & date <= "2014-11-04 23:00:00") &
+                  !(date >= "2014-12-25 00:00:00" & date <= "2014-12-26 23:00:00") &
+                  !(date >= "2014-12-31 00:00:00" & date <= "2015-01-01 23:00:00") &
+                  !(date >= "2015-01-26 00:00:00" & date <= "2015-01-26 23:00:00") &
+                  !(date >= "2015-02-21 00:00:00" & date <= "2015-02-22 23:00:00") &
+                  !(date >= "2015-03-09 00:00:00" & date <= "2015-03-09 23:00:00") &
+                  !(date >= "2015-04-03 00:00:00" & date <= "2015-04-06 23:00:00") & 
+                  !(date >= "2015-04-25 00:00:00" & date <= "2015-04-25 23:00:00") &
+                  !(date >= "2015-06-08 00:00:00" & date <= "2015-06-08 23:00:00") &
+                  !(date >= "2015-10-02 00:00:00" & date <= "2015-10-02 23:00:00"), ])
 ```
 
 ### Reducing the number of sites
-The map with all of the sensors is located [here](http://www.pedestrian.melbourne.vic.gov.au/#date=16-10-2015&time=16&sensor=Swa123_T). To simplify things, I've gotten rid of all of the sites outside of the CBD. In addition, I've collapsed some of the sensors that are close together into the same site (e.g., Bourke Street Mall (North) and Bourke Street Mall (South) becomes Bourke Street Mall). The definition of the city loop train stations includes sites that are close by and are likely related to traffic for that station. For example, the Flinders Street Station site includes the sensors from the Flinders Street Station underpass, as well as those at the corners of Flinders Street/Elizabeth Street and Flinders Street/Swanston Street.
+The map with all of the sensors is located [here](http://www.pedestrian.melbourne.vic.gov.au/#date=16-10-2015&time=16&sensor=Swa123_T). To simplify things, I got rid of all of the sites outside of the CBD. In addition, I've collapsed some of the sensors that are close together into the same site (e.g., Bourke Street Mall (North) and Bourke Street Mall (South) becomes Bourke Street Mall). My definition of the city loop train stations includes sites that are close by and are likely related to traffic for that station. For example, the Flinders Street Station site includes the sensors from the Flinders Street Station underpass, as well as those at the corners of Flinders Street/Elizabeth Street and Flinders Street/Swanston Street.
 
 ```{r reducing_sensor_sites}
-p.subset <- p.subset[ ! p.subset$Sensor_Name %in% c("Australia on Collins", "Birrarung Marr", 
-                                                    "Lygon St (East)", "Lygon Street (West)",
-                                                    "Grattan St-Swanston St (West)",
-                                                    "Melbourne Convention Exhibition Centre",
-                                                    "Monash Rd-Swanston St (West)", "New Quay",
-                                                    "Sandridge Bridge", "St Kilda-Alexandra Gardens",
-                                                    "The Arts Centre", "Tin Alley-Swanston St (West)",
-                                                    "Victoria Point", "Waterfront City", "Webb Bridge"), ]
+p.subset <- p.subset[!p.subset$Sensor_Name %in% 
+                         c("Australia on Collins", "Birrarung Marr", 
+                         "Lygon St (East)", "Lygon Street (West)",
+                         "Grattan St-Swanston St (West)",
+                         "Melbourne Convention Exhibition Centre",
+                         "Monash Rd-Swanston St (West)", "New Quay",
+                         "Sandridge Bridge", "St Kilda-Alexandra Gardens",
+                         "The Arts Centre", "Tin Alley-Swanston St (West)",
+                         "Victoria Point", "Waterfront City", "Webb Bridge"), ]
 
 p.subset$Sensor_Name <- as.character(p.subset$Sensor_Name)
 p.subset$collapsed_sensors <- p.subset$Sensor_Name
-
-p.subset$collapsed_sensors[p.subset$Sensor_Name == "Bourke Street Mall (North)" |
-                           p.subset$Sensor_Name == "Bourke Street Mall (South)"] <- "Bourke Street Mall"
-p.subset$collapsed_sensors[p.subset$Sensor_Name == "City Square" |
-                           p.subset$Sensor_Name == "Town Hall (West)"] <- "Swanston Street South"
-p.subset$collapsed_sensors[p.subset$Sensor_Name == "Collins Place (North)" |
-                           p.subset$Sensor_Name == "Collins Place (South)"] <- "Collins Place"
-p.subset$collapsed_sensors[p.subset$Sensor_Name == "Flinders St-Spark La" |
-                           p.subset$Sensor_Name == "Flinders St-Spring St (West)"] <- "Flinders St-Spring St"
-p.subset$collapsed_sensors[p.subset$Sensor_Name == "Flinders St-Elizabeth St (East)" |
-                           p.subset$Sensor_Name == "Flinders St-Swanston St (West)" |
-                           p.subset$Sensor_Name == "Flinders Street Station Underpass"] <- "Flinders Street Station"
-p.subset$collapsed_sensors[p.subset$Sensor_Name == "Southern Cross Station" |
-                           p.subset$Sensor_Name == "Spencer St-Collins St (North)" |
-                           p.subset$Sensor_Name == "Spencer St-Collins St (South)"] <- "Southern Cross Station"
-p.subset$collapsed_sensors[p.subset$Sensor_Name == "Melbourne Central" |
-                           p.subset$Sensor_Name == "State Library"] <- "Melbourne Central"
+p.subset$collapsed_sensors[
+    p.subset$Sensor_Name == "Bourke Street Mall (North)" |
+    p.subset$Sensor_Name == "Bourke Street Mall (South)"] <- "Bourke Street Mall"
+p.subset$collapsed_sensors[
+    p.subset$Sensor_Name == "City Square" |
+    p.subset$Sensor_Name == "Town Hall (West)"] <- "Swanston Street South"
+p.subset$collapsed_sensors[
+    p.subset$Sensor_Name == "Collins Place (North)" |
+    p.subset$Sensor_Name == "Collins Place (South)"] <- "Collins Place"
+p.subset$collapsed_sensors[
+    p.subset$Sensor_Name == "Flinders St-Spark La" |
+    p.subset$Sensor_Name == "Flinders St-Spring St (West)"] <- "Flinders St-Spring St"
+p.subset$collapsed_sensors[
+    p.subset$Sensor_Name == "Flinders St-Elizabeth St (East)" |
+    p.subset$Sensor_Name == "Flinders St-Swanston St (West)" |
+    p.subset$Sensor_Name == "Flinders Street Station Underpass"] <- 
+    "Flinders Street Station"
+p.subset$collapsed_sensors[
+    p.subset$Sensor_Name == "Southern Cross Station" |
+    p.subset$Sensor_Name == "Spencer St-Collins St (North)" |
+    p.subset$Sensor_Name == "Spencer St-Collins St (South)"] <- "Southern Cross Station"
+p.subset$collapsed_sensors[
+    p.subset$Sensor_Name == "Melbourne Central" |
+    p.subset$Sensor_Name == "State Library"] <- "Melbourne Central"
 
 p.subset$collapsed_sensors_2 <- p.subset$collapsed_sensors
-p.subset$collapsed_sensors_2[p.subset$Sensor_Name == "Flinders St-Elizabeth St (East)" |
-                             p.subset$Sensor_Name == "Flinders St-Swanston St (West)"] <- "Flinders Street-Elizabeth/Swanston Sts"
-p.subset$collapsed_sensors_2[p.subset$Sensor_Name == "Flinders Street Station Underpass"] <- "Flinders Street Station Underpass"
+p.subset$collapsed_sensors_2[
+    p.subset$Sensor_Name == "Flinders St-Elizabeth St (East)" |
+    p.subset$Sensor_Name == "Flinders St-Swanston St (West)"] <- 
+    "Flinders Street-Elizabeth/Swanston Sts"
+p.subset$collapsed_sensors_2[
+    p.subset$Sensor_Name == "Flinders Street Station Underpass"] <- 
+    "Flinders Street Station Underpass"
 ```
 
 ### Averaging the pedestrian traffic
@@ -117,8 +128,7 @@ Finally, the number of pedestrians recorded was averaged over site, hour and wee
 # Sum the collapsed categories
 library(plyr)
 av_peds <- ddply(p.subset, c("date", "collapsed_sensors"), summarise,
-                 n_peds = sum(Hourly_Counts)
-)
+                 n_peds = sum(Hourly_Counts))
 
 # Extract weekday versus weekend
 av_peds$day <- weekdays(av_peds$date, abbreviate = FALSE)
@@ -133,86 +143,124 @@ av_peds$time=format(as.POSIXct(av_peds$date, format="%Y-%m-%d %H:%M"), format="%
 av_peds <- ddply(av_peds, c("collapsed_sensors", "time", "weekend"), summarise,
                  mean_peds = mean(n_peds),
                  n_measurements = length(n_peds),
-                 sum_peds = sum(n_peds)
-)
+                 sum_peds = sum(n_peds))
 ```
 
 ## City loop train stations
 
 ```{r cbd_train_stations, fig.width=10.5, echo=FALSE, fig.align = 'center'}
-library(png)
-library(grid)
-img <- readPNG("/Users/jburchell/projects/t-redactyl/content/figure/Melbourne_CBD_train_station.png")
-grid.raster(img)
+train.map <- readPNG("/Users/jburchell/Documents/Blog-posts/Melbourne_CBD_train_station.png")
+grid.raster(train.map)
 ```
 
 Four of the city loop train stations (see map above) were compared. The fifth station, Parliament, was not defined as only two sensors existed close to this station and therefore the number of pedestrians were likely to be underestimated. The average number of passengers per hour at each station was graphed, separated by weekend and weekday.
 
-```{r station_graph, message = FALSE, fig.width = 14, fig.height = 6}
+```{r station_graph, message = FALSE, fig.width = 11, fig.height = 4.5, echo = FALSE}
 # Extract data set with just the stations (except Parliament) and the surrounding sites
-stations <- av_peds[av_peds$collapsed_sensors %in% c("Flinders Street Station", "Flagstaff Station", 
-                                                     "Melbourne Central", "Southern Cross Station"), ]
+stations <- av_peds[av_peds$collapsed_sensors %in% 
+                        c("Flinders Street Station", "Flagstaff Station", 
+                          "Melbourne Central", "Southern Cross Station"), ]
 
 # Graph of the average pedestrians at each station
 library(ggplot2)
-ggplot(data=stations, aes(x=time, y=mean_peds, group=collapsed_sensors, colour=collapsed_sensors)) +
+ggplot(data=stations, aes(x=time, y=mean_peds, 
+                          group=collapsed_sensors, 
+                          colour=collapsed_sensors)) +
     geom_line() +
     geom_point() +
     facet_grid(. ~ weekend) +
     ylab("Mean pedestrians per hour") +
     xlab("Time of day") +
-    scale_x_discrete(breaks=c("00:00", "02:00", "04:00", "06:00", "08:00", "10:00", 
-                              "12:00", "14:00", "16:00", "18:00", "20:00", "22:00")) +
+    scale_x_discrete(breaks=c("00:00", "03:00", "06:00", "09:00", 
+                              "12:00", "15:00", "18:00", "21:00")) +
     theme_bw() +
-    scale_shape_discrete(name = "CBD train stations") +
-    scale_colour_discrete(name = "CBD train stations")
+    scale_shape_discrete(name = "CBD Train Stations") +
+    scale_colour_discrete(name = "CBD Train Stations")
 ```
+
+As you can see, Southern Cross and Flinders Street Stations (and surrounds) are the most congested in the morning on weekdays, while Melbourne Central has significantly less traffic. In the afternoons and evenings on weekdays, Flinders Street Station is by far the most busy station, while Flagstaff has the least traffic. On the weekends, Flinders Street Station has by far and away the most traffic, while Southern Cross is comparatively quiet (note that Flagstaff is closed on the weekend).
+
+```{r station_hour_average}
+station.hour <- ddply(stations, c("time", "weekend"), summarise,
+                      total_peds = sum(sum_peds),
+                      total_measurements = sum(n_measurements)   
+)
+station.hour$av_peds <- station.hour$total_peds / station.hour$total_measurements
+max.weekday <- station.hour$time[station.hour$av_peds == 
+                                     max(station.hour$av_peds[
+                                         station.hour$weekend == "Weekday"])]
+max.weekend <- station.hour$time[station.hour$av_peds == 
+                                     max(station.hour$av_peds[
+                                         station.hour$weekend == "Weekend"])]
+```
+
+During the week, the stations are busy throughout the whole day, but the hour of peak traffic is `r max.weekday`, dropping off sharply before and after this time. You will therefore save yourself a transit headache by leaving the city a bit earlier or later. On the weekend, the stations become increasingly busy across the day, peaking at `r max.weekend`. From the looks of the graph above, your best bet on the weekends is to travel into the city in the morning and leave well before `r max.weekend` to avoid the crowds.
 
 ## The east of the CBD
 
-```{r cbd_east, fig.width=10.5, echo=FALSE, fig.align = 'center'}
-library(png)
-library(grid)
-img <- readPNG("/Users/jburchell/projects/t-redactyl/content/figure/Melbourne_CBD_east.png")
-grid.raster(img)
+```{r cbd_east, fig.width=10, echo=FALSE, fig.align = 'center'}
+east.cbd.map <- readPNG("/Users/jburchell/Documents/Blog-posts/Melbourne_CBD_east.png")
+grid.raster(east.cbd.map)
 ```
 
-```{r cbd_east_graph, message = FALSE, fig.width = 14, fig.height = 6}
+The east side of the CBD is a lovely area, including Victorian Parliament House, two of the city's theatres, high-end shopping and some wonderful restaurants (I recently went to [Mezzo](http://www.mezzoitalian.com.au/) - I highly recommend the arancini!). It tends to be quieter than other parts of the CBD, although it can get congested at times. Let's have a look.
+
+```{r cbd_east_graph, message = FALSE, fig.width = 11, fig.height = 4.5, echo = FALSE}
 # Extract data set with just the city east sites
-city.east <-  av_peds[av_peds$collapsed_sensors %in% c("Alfred Place", "Lonsdale St-Spring St (West)", 
-                                                       "Collins Place", "Flinders St-Spring Street",
-                                                       "Bourke St-Russel St (West)", 
-                                                       "Chinatown-Lt Bourke St (South)",
-                                                       "Lonsdale Street (South)"),]
+city.east <-  av_peds[av_peds$collapsed_sensors %in% 
+                          c("Alfred Place", "Lonsdale St-Spring St (West)", 
+                            "Collins Place", "Flinders St-Spring Street",
+                            "Bourke St-Russel St (West)", 
+                            "Chinatown-Lt Bourke St (South)",
+                            "Lonsdale Street (South)"),]
 library(ggplot2)
-ggplot(data=city.east, aes(x=time, y=mean_peds, group=collapsed_sensors, colour=collapsed_sensors)) +
+ggplot(data=city.east, aes(x=time, y=mean_peds, 
+                           group=collapsed_sensors, 
+                           colour=collapsed_sensors)) +
     geom_line() +
     geom_point() +
     facet_grid(. ~ weekend) +
     ylab("Mean pedestrians per hour") +
     xlab("Time of day") +
-    scale_x_discrete(breaks=c("00:00", "02:00", "04:00", "06:00", "08:00", "10:00", 
-                              "12:00", "14:00", "16:00", "18:00", "20:00", "22:00")) +
+    scale_x_discrete(breaks=c("00:00", "03:00", "06:00", "09:00", 
+                              "12:00", "15:00", "18:00", "21:00")) +
     theme_bw() +
-    scale_shape_discrete(name = "City east") +
-    scale_colour_discrete(name = "City east")
+    scale_shape_discrete(name = "City East") +
+    scale_colour_discrete(name = "City East")
 ```
+
+Collins Place is clearly the busiest on weekdays, especially at the start and end of the workday and at lunchtime. The rest of the east of the city has a similar pattern of pedestrian traffic during the weekday, becoming increasingly busier towards lunchtime, dropping off in the afternoon, and having another peak at the end of the workday/dinner time. The quietest areas appear to be Alfred Place and east Chinatown. On the weekends, the east of the CBD is quiet in the morning with increasing traffic towards the afternoon and evening. The busiest area is Bourke/Russell Streets, probably given its proximity to Her Majesty's Theatre.
+
+```{r east_hour_average}
+east.hour <- ddply(city.east, c("time", "weekend"), summarise,
+                   total_peds = sum(sum_peds),
+                   total_measurements = sum(n_measurements)   
+)
+east.hour$av_peds <- east.hour$total_peds / east.hour$total_measurements
+max.weekday <- east.hour$time[east.hour$av_peds == 
+                                  max(east.hour$av_peds[
+                                      east.hour$weekend == "Weekday"])]
+max.weekend <- east.hour$time[east.hour$av_peds == 
+                                  max(east.hour$av_peds[
+                                      east.hour$weekend == "Weekend"])]
+```
+
+Unsurprisingly from the above graph, the peak time in the east CBD on weekdays is `r max.weekday`, suggesting an early or late lunch is prudent to avoid the crowds. Conversely, the peak time on weekends is `r max.weekend`, coinciding with the start of theatre shows and dinner time. Given that the crowds die down significantly after this, the best time to visit the east of the CBD on the weekend is either in the morning or after `r max.weekend`.
 
 ## City centre
 
-```{r cbd_centre, fig.width=10.5, echo=FALSE, fig.align = 'center'}
-library(png)
-library(grid)
-img <- readPNG("/Users/jburchell/projects/t-redactyl/content/figure/City_Central_Locations.png")
-grid.raster(img)
+```{r cbd_centre, fig.width = 10, echo=FALSE, fig.align = 'center'}
+city.centre.map <- readPNG("/Users/jburchell/Documents/Blog-posts/City_Central_Locations.png")
+grid.raster(city.centre.map)
 ```
 
-Finally, the sensors at the corners of Flinders Street/Elizabeth Street and Flinders Street/Swanston Street were separated from the Flinders Street Station underpass and included as a site in the centre of the CBD.
+The centre of the city, running down Elizabeth and Swanston Streets, is by far the busiest part of the CBD. It includes some of the major shopping precincts of the city (Bourke Street Mall and Melbourne Central), as well as tourist attractions such as the Queen Vic Market, the State Library and Federation Square. In addition, there is a massive array of restaurants, bars and cafes (one of my favourite restaurants in this area is a Moroccan place called [Sahara](http://saharamelbourne.com.au/) on Swanston Street).
+
+In order to analyse the data for the city centre, I decided to separate out the sensors at the corners of Flinders Street/Elizabeth Street and Flinders Street/Swanston Street from the Flinders Street Station underpass and include them as a site in the CBD.
 
 ```{r, cache = TRUE}
 av_peds_2 <- ddply(p.subset, c("date", "collapsed_sensors_2"), summarise,
-                 n_peds = sum(Hourly_Counts)
-)
+                 n_peds = sum(Hourly_Counts))
 
 # Extract weekday versus weekend
 av_peds_2$day <- weekdays(av_peds_2$date, abbreviate = FALSE)
@@ -229,61 +277,44 @@ av_peds_2 <- ddply(av_peds_2, c("collapsed_sensors_2", "time", "weekend"), summa
                  n_measurements = length(n_peds),
                  sum_peds = sum(n_peds)
 )
-
-city.centre <- av_peds_2[av_peds_2$collapsed_sensors_2 %in% c("Bourke Street Mall", 
-                                                        "Chinatown-Swanston St (North)", 
-                                                        "Swanston Street South", "Melbourne Central",
-                                                        "Flinders Street-Elizabeth/Swanston Sts",
-                                                        "QV Market-Elizabeth St (West)"), ]
 ```
 
+```{r cbd_centre_graph, message = FALSE, fig.width = 11, fig.height = 4.5, echo = FALSE}
+city.centre <- av_peds_2[av_peds_2$collapsed_sensors_2 %in% 
+                             c("Bourke Street Mall", "Chinatown-Swanston St (North)", 
+                               "Swanston Street South", "Melbourne Central",
+                               "Flinders Street-Elizabeth/Swanston Sts",
+                               "QV Market-Elizabeth St (West)"), ]
 
-
-```{r, message = FALSE, fig.width = 14, fig.height = 6}
-library(ggplot2)
 ggplot(data=city.centre, aes(x=time, y=mean_peds, group=collapsed_sensors_2, colour=collapsed_sensors_2)) +
     geom_line() +
     geom_point() +
     facet_grid(. ~ weekend) +
     ylab("Mean pedestrians per hour") +
     xlab("Time of day") +
-    scale_x_discrete(breaks=c("00:00", "02:00", "04:00", "06:00", "08:00", "10:00", 
-                              "12:00", "14:00", "16:00", "18:00", "20:00", "22:00")) +
+    scale_x_discrete(breaks=c("00:00", "03:00", "06:00", "09:00", 
+                              "12:00", "15:00", "18:00", "21:00")) +
     theme_bw() +
     scale_shape_discrete(name = "City centre") +
     scale_colour_discrete(name = "City centre")
 ```
 
-## Best and worst times to go to the CBD
-- across all sites, busiest times (stations, Swanston Street and city east)
+You can see straight away that the level of traffic in the CBD is substantially higher than in the east of the CBD, but is (naturally) comparable to the city loop train stations. Bourke Street Mall and Swanston Street South (Town Hall/City Square) are the busiest on both weekends and weekdays. In contrast, Chinatown and the Queen Vic Market are both much quieter than the other parts of the city. Melbourne Central and Flinders Street have much less traffic than Bourke Street Mall or Swanston Street South on the weekend, suggesting these might be better options for shopping or grabbing some food than other parts of the city centre.
 
-```{r}
-library(plyr)
-temp <- ddply(stations, c("time", "weekend"), summarise,
-                 total_peds = sum(sum_peds),
-                 total_measurements = sum(n_measurements)   
+```{r centre_hour_average}
+centre.hour <- ddply(city.centre, c("time", "weekend"), summarise,
+                     total_peds = sum(sum_peds),
+                     total_measurements = sum(n_measurements)   
 )
-temp$av_peds <- temp$total_peds / temp$total_measurements
-temp$time[temp$av_peds == max(temp$av_peds[temp$weekend == "Weekday"])]
-temp$time[temp$av_peds == max(temp$av_peds[temp$weekend == "Weekend"])]
-
-temp2 <- ddply(city.centre, c("time", "weekend"), summarise,
-                 total_peds = sum(sum_peds),
-                 total_measurements = sum(n_measurements)   
-)
-temp2$av_peds <- temp2$total_peds / temp2$total_measurements
-temp2$time[temp2$av_peds == max(temp2$av_peds[temp2$weekend == "Weekday"])]
-temp2$time[temp2$av_peds == max(temp2$av_peds[temp2$weekend == "Weekend"])]
-
-temp3 <- ddply(city.east, c("time", "weekend"), summarise,
-                 total_peds = sum(sum_peds),
-                 total_measurements = sum(n_measurements)   
-)
-temp3$av_peds <- temp3$total_peds / temp3$total_measurements
-temp3$time[temp3$av_peds == max(temp3$av_peds[temp3$weekend == "Weekday"])]
-temp3$time[temp3$av_peds == max(temp3$av_peds[temp3$weekend == "Weekend"])]
+centre.hour$av_peds <- centre.hour$total_peds / centre.hour$total_measurements
+max.weekday <- centre.hour$time[centre.hour$av_peds == 
+                                    max(centre.hour$av_peds[
+                                        centre.hour$weekend == "Weekday"])]
+max.weekend <- centre.hour$time[centre.hour$av_peds == 
+                                    max(centre.hour$av_peds[
+                                        centre.hour$weekend == "Weekend"])]
 ```
 
+The busiest time on weekdays in the city centre is `r max.weekday`, suggesting that grabbing an early lunch might be a good strategy for avoiding the crowds. As with the train stations, traffic in the city centre increases across the course of the morning, peaking at `r max.weekend`, suggesting you are best coming into the city in the mornings.
 
-
-
+The full code used to create the figures in this post is located in this [gist on my Github page](https://gist.github.com/t-redactyl/3d993638a7d395b84958).
