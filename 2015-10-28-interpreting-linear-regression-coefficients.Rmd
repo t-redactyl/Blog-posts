@@ -1,0 +1,6 @@
+---
+title: ''
+output: html_document
+---
+
+Interpreting linear regression coefficients (including interactions and factor variables!).

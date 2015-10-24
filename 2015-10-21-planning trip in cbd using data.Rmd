@@ -1,5 +1,5 @@
 ---
-title: Using data to avoid the crowds in Melbourne CBD
+title: Avoiding the crowds in Melbourne CBD using data
 date: 2015-10-21
 comments: false
 tags: R, Public Data
@@ -25,7 +25,7 @@ The data were downloaded...
 pedestrians <- read.csv(url("https://data.melbourne.vic.gov.au/api/views/b2ak-trbp/rows.csv"))
 ```
 
-... and screened. Note that none of the sensor sites had missing data.
+... and screened. None of the sensor sites had missing data.
 
 ```{r screening_data, message = FALSE, results = 'hide'}
 head(pedestrians)
@@ -37,7 +37,6 @@ tapply(pedestrians$Hourly_Counts, pedestrians$Sensor_Name, function(x) sum(is.na
 In order to increase the relevance of the data to current pedestrian traffic, I limited the dataset to the final two years (from 1st October 2013 to 15th October 2015).
 
 ```{r limiting_to_2_years, cache = TRUE, message = FALSE}
-# Converting date variable into actual date/time format
 pedestrians$date <- as.POSIXct(as.character(pedestrians$Date_Time), 
                                format = "%d-%b-%Y %H:%M")
 p.subset <- subset(pedestrians, date >= "2013-10-01 00:00:00")
@@ -71,7 +70,7 @@ p.subset <- with(p.subset, p.subset
 ```
 
 ### Reducing the number of sites
-The map with all of the sensors is located [here](http://www.pedestrian.melbourne.vic.gov.au/#date=16-10-2015&time=16&sensor=Swa123_T). To simplify things, I got rid of all of the sites outside of the CBD. In addition, I've collapsed some of the sensors that are close together into the same site (e.g., Bourke Street Mall (North) and Bourke Street Mall (South) becomes Bourke Street Mall). My definition of the city loop train stations includes sites that are close by and are likely related to traffic for that station. For example, the Flinders Street Station site includes the sensors from the Flinders Street Station underpass, as well as those at the corners of Flinders Street/Elizabeth Street and Flinders Street/Swanston Street.
+The map with all of the sensors is located [here](http://www.pedestrian.melbourne.vic.gov.au/#date=16-10-2015&time=16&sensor=Swa123_T). To simplify things, I got rid of all of the sites outside of the CBD. In addition, I've collapsed some of the sensors that are close together into the same site (e.g., Bourke Street Mall (North) and Bourke Street Mall (South) became Bourke Street Mall). My definition of the city loop train stations includes sites that are close to the stations and are likely related to traffic for that station. For example, Flinders Street Station includes the sensors from the Flinders Street Station underpass, as well as those at the corners of Flinders Street/Elizabeth Street and Flinders Street/Swanston Street.
 
 ```{r reducing_sensor_sites}
 p.subset <- p.subset[!p.subset$Sensor_Name %in% 
@@ -149,6 +148,7 @@ av_peds <- ddply(av_peds, c("collapsed_sensors", "time", "weekend"), summarise,
 ## City loop train stations
 
 ```{r cbd_train_stations, fig.width=10.5, echo=FALSE, fig.align = 'center'}
+library(png); library(grid)
 train.map <- readPNG("/Users/jburchell/Documents/Blog-posts/Melbourne_CBD_train_station.png")
 grid.raster(train.map)
 ```
@@ -178,7 +178,7 @@ ggplot(data=stations, aes(x=time, y=mean_peds,
     scale_colour_discrete(name = "CBD Train Stations")
 ```
 
-As you can see, Southern Cross and Flinders Street Stations (and surrounds) are the most congested in the morning on weekdays, while Melbourne Central has significantly less traffic. In the afternoons and evenings on weekdays, Flinders Street Station is by far the most busy station, while Flagstaff has the least traffic. On the weekends, Flinders Street Station has by far and away the most traffic, while Southern Cross is comparatively quiet (note that Flagstaff is closed on the weekend).
+As you can see, Southern Cross and Flinders Street Stations (and surrounds) are the most congested in the morning on weekdays, while Melbourne Central has significantly less traffic. In the afternoons and evenings on weekdays, Flinders Street Station is by far the most busy station, while Flagstaff has the least traffic. On the weekends, Flinders Street Station has by far and away the most traffic, while Southern Cross is comparatively quiet (Flagstaff is so quiet as it is closed on the weekend).
 
 ```{r station_hour_average}
 station.hour <- ddply(stations, c("time", "weekend"), summarise,
@@ -199,11 +199,12 @@ During the week, the stations are busy throughout the whole day, but the hour of
 ## The east of the CBD
 
 ```{r cbd_east, fig.width=10, echo=FALSE, fig.align = 'center'}
+library(png); library(grid)
 east.cbd.map <- readPNG("/Users/jburchell/Documents/Blog-posts/Melbourne_CBD_east.png")
 grid.raster(east.cbd.map)
 ```
 
-The east side of the CBD is a lovely area, including Victorian Parliament House, two of the city's theatres, high-end shopping and some wonderful restaurants (I recently went to [Mezzo](http://www.mezzoitalian.com.au/) - I highly recommend the arancini!). It tends to be quieter than other parts of the CBD, although it can get congested at times. Let's have a look.
+The east side of the CBD is a lovely area, including Victorian Parliament House, two of the city's theatres, high-end shopping and some wonderful restaurants (I recently went to [Pastuso](http://pastuso.com.au/) - it was incredible!). It tends to be quieter than other parts of the CBD, although it can get congested at times. Let's have a look.
 
 ```{r cbd_east_graph, message = FALSE, fig.width = 11, fig.height = 4.5, echo = FALSE}
 # Extract data set with just the city east sites
@@ -250,6 +251,7 @@ Unsurprisingly from the above graph, the peak time in the east CBD on weekdays i
 ## City centre
 
 ```{r cbd_centre, fig.width = 10, echo=FALSE, fig.align = 'center'}
+library(png); library(grid)
 city.centre.map <- readPNG("/Users/jburchell/Documents/Blog-posts/City_Central_Locations.png")
 grid.raster(city.centre.map)
 ```
@@ -317,4 +319,4 @@ max.weekend <- centre.hour$time[centre.hour$av_peds ==
 
 The busiest time on weekdays in the city centre is `r max.weekday`, suggesting that grabbing an early lunch might be a good strategy for avoiding the crowds. As with the train stations, traffic in the city centre increases across the course of the morning, peaking at `r max.weekend`, suggesting you are best coming into the city in the mornings.
 
-The full code used to create the figures in this post is located in this [gist on my Github page](https://gist.github.com/t-redactyl/3d993638a7d395b84958).
+The full code used to create the figures in this post is located in this [gist on my Github page](https://gist.github.com/t-redactyl/04b212241d5b7861c25a).
