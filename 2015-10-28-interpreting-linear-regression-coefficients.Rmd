@@ -1,6 +1,174 @@
 ---
-title: ''
-output: html_document
+title: Interpreting linear regression coefficients
+date: 2015-10-28
+comments: false
+tags: Statistics, R, Hypothesis Testing, Regression
+keywords: rlanguage, data science, hypothesis testing, linear regression
 ---
 
-Interpreting linear regression coefficients (including interactions and factor variables!).
+[Multivariable linear regression](https://en.wikipedia.org/wiki/Linear_regression) can seem complicated, especially when including things like [factor variables](https://en.wikipedia.org/wiki/Categorical_variable) and [interactions](https://en.wikipedia.org/wiki/Interaction_(statistics)). In reality, however, it is relatively straightfoward to understand once you break it down into its components. In this blog post I will talk you through interpreting a linear regression model which includes one continuous variable, one factor variable and their interaction in R.
+
+## Running the model
+
+Let's consider a model using the `mtcars` dataset. In this model, we will predict `mpg` (miles per gallon) using `am` (transmission), `wt` (the car's weight in 1000lb increments) and their interaction term.
+
+Before running the model, I will convert `am` into a factor variable. I could have also converted `am` to a factor within the model using `factor(am)`, but I wanted to label each level to make the explanation of the coefficients more clear:
+
+```{r running_the_model}
+data(mtcars)
+mtcars$am.f <- as.factor(mtcars$am); levels(mtcars$am.f) <- c("Automatic", "Manual")
+
+# Build the model
+model <- lm(mpg ~ wt + am.f + wt * am.f, data = mtcars)
+summary(model)$coef
+```
+
+## Interpreting the coefficients
+
+You can see from the above, this model has four coefficients, the intercept, the main effect for `wt`, the main effect for `am` and the interaction of `wt * am`. So how do we interpret these? As you will recall, a regression equation takes the form:
+
+$$E[Y | X] = \beta_0 + \beta_1X$$
+
+indicating that the expected value of $Y$, given the value of $X$, is given by the intercept plus the value of $X$ multiplied by $\beta_1$. Our model is therefore:
+
+$$E[Y | X_1X_2] = \beta_0 + \beta_1(weight) + \beta_2(transmission) + \beta_3(weight \cdot transmission)$$
+
+Ok, so how do we interpret this? The first part is to understand that the intercept is the miles per gallon a car is expected to have when both car weight and car transmission are equal to 0 (or when the car is automatic). This can be seen when we substitute $X_1$ and $X_2$ for 0:
+
+$$\begin{eqnarray} 
+E[Y | X_1X_2] &=& \beta_0 + \beta_1(0) + \beta_2(0) + \beta_3(0 \cdot 0) \cr
+&=& \beta_0 \cr
+\end{eqnarray}$$
+
+In this case the intercept, or the miles per gallon of an automatic car of weight 0lbs, is `r round(summary(model)$coef[1,1], 2)`. Obviously this is a useless number as no real car can have a weight of 0. We can make our coefficients more useful using a technique called **centring**.
+
+## Centring makes interpretation easier
+
+Centring involves subtracting the mean from the continuous predictors in the model in order to reset the point at which the regression slope crosses the intercept to be the mean. This is demonstrated in the figure below:
+
+```{r centred_chart, echo = FALSE, fig.width = 10.5, fig.height = 4.5}
+library(ggplot2); library(gridExtra)
+g1 <- ggplot(data=mtcars, aes(x=wt, y=mpg)) + 
+        geom_point(alpha = 0.7, colour = "#0971B2") +
+        ylab("Miles per gallon") + 
+        ylim(10, 35) +
+        xlab("Weight (`000 lbs)") +
+        ggtitle("Untransformed Weight") +     
+        geom_hline(yintercept = 31.42) +
+        geom_vline(xintercept = 0) +
+        theme_bw()
+
+mtcars$centred.wt <- mtcars$wt - mean(mtcars$wt)
+g2 <- ggplot(data=mtcars, aes(x=centred.wt, y=mpg)) + 
+        geom_point(alpha = 0.7, colour = "#0971B2") +
+        ylab("Miles per gallon") + 
+        ylim(10, 35) +
+        xlab("Centred Weight (`000 lbs)") +
+        ggtitle("Centred Weight") +  
+        geom_hline(yintercept = 19.24) +
+        geom_vline(xintercept = 0) +
+        theme_bw()
+
+grid.arrange(g1, g2, nrow = 1, ncol = 2)
+```
+
+You can see that centring replaces the true intercept value for weight (0 lbs, a non-existant value) with a new intercept value (`r round(mean(mtcars$wt), 2)`) by making the model consider the mean as `wt` = 0. Let's try and interpret our intercept again using our centred weight variable. Firstly, we need to create a new model:
+
+```{r running_the_centred_model}
+centred.model <- lm(mpg ~ I(wt - mean(wt)) + am.f + I(wt - mean(wt)) * am.f, data = mtcars)
+summary(centred.model)$coef
+```
+
+So, the new intercept value is `r round(summary(centred.model)$coef[1,1], 2)`, which is the predicted miles per gallon for an automatic car (transmission = 0) of weight `r round(mean(mtcars$wt) * 1000, 0)` lbs (centred weight = 0).
+
+Now that we've covered the intercept, how do we interpret the rest? The trick is to break this down by the different levels of `am`. When the transmission is automatic (or when $X_2$ = 0), the regression equation breaks down like so:
+
+$$\begin{eqnarray} 
+E[Y | X_1X_2] &=& \beta_0 + \beta_1(weight) + \beta_2(0) + \beta_3(weight \cdot 0) \cr
+&=& \beta_0 + \beta_1(weight) \cr
+\end{eqnarray}$$
+
+Alternatively, when the transmission is manual (or when $X_2$ = 1), the regression equation becomes:
+
+$$\begin{eqnarray} 
+E[Y | X_1X_2] &=& \beta_0 + \beta_1(weight) + \beta_2(1) + \beta_3(weight \cdot 1) \cr
+&=& \beta_0 + \beta_1(weight) + \beta_2 + \beta_3(weight) \cr
+&=& (\beta_0 + \beta_2) + (\beta_1 + \beta_3)(weight) \cr
+\end{eqnarray}$$
+
+Substituting our model coefficients into this, we get:
+
+$$E[Y | X_1X_2] = `r round(summary(centred.model)$coef[1,1], 2)` `r round(summary(centred.model)$coef[2,1], 2)`(weight)$$
+
+for cars with automatic transmission and:
+
+$$\begin{eqnarray} 
+E[Y | X_1X_2] &=& (`r round(summary(centred.model)$coef[1,1], 2)` + `r round(summary(centred.model)$coef[3,1], 2)`) + (`r round(summary(centred.model)$coef[2,1], 2)` + `r round(summary(centred.model)$coef[4,1], 2)`)(weight) \cr
+&=& `r round((summary(centred.model)$coef[1,1] + summary(centred.model)$coef[3,1]), 2)` `r round((summary(centred.model)$coef[2,1] + summary(centred.model)$coef[4,1]), 2)`(weight) \cr
+\end{eqnarray}$$
+
+for cars with manual transmission. So our model is telling us that a 2620 lb car (which would have a value of `r round(2.620 - mean(mtcars$wt), 2)` in our centred weight variable) would is predicted to have an MPG of `r round(summary(centred.model)$coef[1,1] + summary(centred.model)$coef[2,1] * (2.620 - mean(mtcars$wt)), 2)` if it was automatic and `r round((summary(centred.model)$coef[1,1] + summary(centred.model)$coef[3,1]) + (summary(centred.model)$coef[2,1] + summary(centred.model)$coef[4,1]) * (2.620 - mean(mtcars$wt)), 2)` if it were manual.
+
+When comparing the two models, you may have noticed that the two equations differ in both their intercept and slope values. More specifically, $\beta_2$ is the change in the **intercept** when changing from automatic to manual transmission, while $\beta_3$ represents the change in **slope** changing from automatic to manual transmission. In other words, at the mean car weight, manual cars get `r round(abs(summary(centred.model)$coef[3,1]), 2)` less miles per gallon than automatic cars. In addition, manual cars get `r round(abs(summary(centred.model)$coef[4,1]), 2)` less miles per gallon for every addition 1000 lbs in weight. You can see this in the figure below. Note that the interaction terms cross, meaning that manual cars actually gain `r round(abs(summary(centred.model)$coef[4,1]), 2)` miles per gallon for every 1000 lbs less of car weight.
+
+```{r interaction_model, echo = FALSE, fig.width = 7.5, fig.height = 6, fig.align = 'center'}
+library(ggplot2)
+gp <- ggplot(data=mtcars, aes(x=centred.wt, y=mpg, colour=am.f)) + 
+        geom_point(alpha = 0.7) +
+        geom_abline(intercept = coef(centred.model)[1], slope = coef(centred.model)[3], 
+                    size = 1, color = "#B21212") +
+        geom_abline(intercept = coef(centred.model)[1] + coef(centred.model)[2], 
+                    slope = coef(centred.model)[3] + coef(centred.model)[4], 
+                    size = 1, color = "#0971B2") +
+        scale_colour_manual(name="Transmission",  values =c("#B21212", "#0971B2")) +
+        ylab("Miles per gallon") +    
+        xlab("Centred Weight (`000 lbs)") +
+        theme_bw()
+gp
+```
+
+## Standard error and the confidence interval
+
+The final part of interpreting regression coefficients is getting an estimate of their precision. We will do this using confidence intervals. We can shortcut this process using R's inbuilt `predict` function. The first thing we need to do is create separate models for the automatic and manual transmissions.
+
+```{r sep_models}
+centred.model.auto <- lm(mpg ~ I(wt - mean(mtcars$wt)), data = mtcars[mtcars$am == 0, ])
+centred.model.manual <- lm(mpg ~ I(wt - mean(mtcars$wt)), data = mtcars[mtcars$am == 1, ])
+```
+
+We'll then construct a new dataframe containing the values of weight we want to put a confidence interval around. Let's go with 2620 lbs, which corresponds to a manual car in our dataset, the Mazda RX4, and 3570 lbs, which corresponds with the Duster 360, an automatic car in our dataset. I've picked a 95% confidence interval (which is also the default in the predict function).
+
+```{r con_and_pred_intervals}
+manual.car <- data.frame(wt = 2.620)
+auto.car <- data.frame(wt = 3.570)
+
+# CI for mean
+manual.ci <- predict(centred.model.manual, newdata = manual.car, 
+                     interval = ("confidence"), level = 0.95)
+auto.ci <- predict(centred.model.auto, newdata = auto.car, 
+                   interval = ("confidence"), level = 0.95)
+```
+
+For the manual car (the Mazda RX4), we can see that the predicted MPG is `r round(manual.ci[ ,1], 2)` and the 95% confidence interval is [`r round(manual.ci[ ,2], 2)`, `r round(manual.ci[ ,3], 2)`]. The actual MPG of this car model is `r mtcars$mpg[row.names(mtcars) == "Mazda RX4"]`, which is within the confidence interval. Similarly, the predicted MPG for the automatic car (the Duster 360) is `r round(auto.ci[ ,1], 2)` and the 95% confidence interval is [`r round(auto.ci[ ,2], 2)`, `r round(auto.ci[ ,3], 2)`]. However, the actual MPG for this model was `r mtcars$mpg[row.names(mtcars) == "Duster 360"]`, outside of the confidence interval, suggesting this is value for which the model is not a good fit.
+
+## A final note: using the model on existing versus new values
+
+You can see above that when I used the model to predict MPG, it was only on values that were measured in the data. This is because when we want to use regression models to predict on new values, we have to use **prediction intervals** rather than confidence intervals. Prediction intervals are more conservative (wider) than confidence intervals to allow for the extra error that comes from using a value we haven't measured. Prediction intervals are constructed using the same method as the confidence intervals above, but instead we pass "prediction" to the interval argument. Let's say we want to predict the MPG for a car weighing 2000 lbs. Depending on whether the car is manual or automatic, the predicted value and prediction interval will be different, so we need to run it for both. 
+
+```{r prediction_interval}
+new.cars <- data.frame(wt = 2)
+
+# Prediction interval for new values
+manual.predict.ci <- predict(centred.model.manual, newdata = new.cars, 
+                             interval = ("prediction"), level = 0.95)
+auto.predict.ci <- predict(centred.model.auto, newdata = new.cars, 
+                           interval = ("prediction"), level = 0.95)
+```
+
+You can see the predicted MPG for the 2000 lb manual car is `r round(manual.predict.ci[ ,1], 2)` [95% prediction interval: `r round(manual.predict.ci[ ,2], 2)`, `r round(manual.predict.ci[ ,3], 2)`], and `r round(auto.predict.ci[ ,1], 2)` [95% prediction interval: `r round(auto.predict.ci[ ,2], 2)`, `r round(auto.predict.ci[ ,3], 2)`] for the automatic car. You can see that these intervals are significantly wider than the confidence interval.
+
+A final note about both prediction and confidence intervals - they both become wider the further the value of interest is from the mean. This means that predicting outside of the range of measured values - always something that should be done with caution - will yield very wide prediction intervals compared to values within the observed range.
+
+Much of the points and code in this blog post are adapted from the excellent [Regression Models](https://www.coursera.org/course/regmods) unit on Coursera by [Brian Caffo](https://twitter.com/bcaffo), [Jeff Leek](https://twitter.com/jtleek) and [Roger Peng](https://twitter.com/rdpeng). This course gives a far more comprehensive coverage of this material and is highly recommended.
+
+Finally, the full code used to create the figures in this post is located in this [gist on my Github page](https://gist.github.com/t-redactyl/3bbe9623a136db249268).
