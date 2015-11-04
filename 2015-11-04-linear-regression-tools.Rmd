@@ -1,0 +1,198 @@
+---
+title: Interpreting linear regression coefficients
+date: 2015-10-28
+comments: false
+tags: Statistics, R, Hypothesis Testing, Regression
+keywords: rlanguage, data science, hypothesis testing, linear regression, confidence interval, prediction interval
+---
+
+Choosing the right linear regression model for your data can be an overwhelming venture, especially when you have a large number of available predictors. Luckily R has a wide array of in-built and user-written tools to make this process easier. In this week's blog post I will describe some of the tools I commonly use.
+
+To illustrate this, I will use the mtcars dataset. The first step as always is to load in the data.
+
+```{r loading_in_data, warning = FALSE, message = FALSE}
+rm(list = ls())
+data(mtcars)
+```
+
+I will also do a little bit of data cleaning by creating labelled factor variables for all of the categorical variables.
+
+```{r cleaning_data}
+mtcars$am.f <- as.factor(mtcars$am); levels(mtcars$am.f) <- c("Automatic", "Manual")
+mtcars$cyl.f <- as.factor(mtcars$cyl); levels(mtcars$cyl.f) <- c("4 cyl", "6 cyl", "8 cyl")
+mtcars$vs.f <- as.factor(mtcars$vs); levels(mtcars$vs.f) <- c("V engine", "Straight engine")
+mtcars$gear.f <- as.factor(mtcars$gear); levels(mtcars$gear.f) <- c("3 gears", "4 gears", "5 gears")
+mtcars$carb.f <- as.factor(mtcars$carb)
+```
+      
+We're now ready to go through our model building tools. In a similar manner to last week's blog post, I want to examine how well transmission type (`am`) predicts a car's miles per gallon (`mpg`), taking into account other covariates and their interactions as appropriate.
+
+## Normality, linearity and multicollinearity
+
+The first step to building the model is checking whether the data meet the assumptions of linear regression. A really neat way to simultaneously check the normality of the outcome, the linearity of the relationships between the outcome and the predictors and the intercorrelations between the predictors is the **ggpairs** plot in the very handy [GGally R package](https://cran.r-project.org/web/packages/GGally/GGally.pdf). Before we run the ggpairs plot, I will rearrange the dataframe so the columns are in a more useful order (with `mpg` and `am` as the first columns).
+
+```{r ggpairs_plot, message = FALSE, warning = FALSE, cache = TRUE, fig.width = 14, fig.height = 10}
+library(ggplot2); library(GGally)
+mtcars <- mtcars[ , c(1, 9, 2:8, 10:16)]
+g = ggpairs(mtcars[ , 1:11], lower = list(continuous = "smooth", params = c(method = "loess")))
+g
+```
+
+Note that this plot doesn't work with factor variables, and the only categorical variables that should be included are either binary or ordinal. We can see that `mpg` is roughly normal (albeit a little positively skewed), and that the continuous variables and ordinal variables have linear relationship with `mpg`. We can also see there are a few very high intercorrelations between the potential predictor variables, but it is a little hard to pick these out in the volume of information.
+
+A quick and easy way to find collinear pairs is using the `spec.cor` function written by [Joshua Wiley](http://joshuawiley.com/). This handy little function allows you to set a cutoff correlation level (in this case, 0.8), and it will return all pairs that correlate at or above that level.
+
+```{r spec_cor}
+spec.cor <- function (dat, r, ...) { 
+    x <- cor(dat, ...) 
+    x[upper.tri(x, TRUE)] <- NA 
+    i <- which(abs(x) >= r, arr.ind = TRUE) 
+    data.frame(matrix(colnames(x)[as.vector(i)], ncol = 2), value = x[i]) 
+} 
+
+spec.cor(mtcars[ , 2:11], 0.8)
+```
+
+In this case we can see we have four collinear pairs of predictors. In this case, I will keep `wt` and discard `disp`, `hp` and `vs`. My choice was based on simple predictor reduction as I don't know much about the content area and variables, but I might have made a different decision (e.g., keeping `hp` and `vs`) if one of those variables was particularly important or interpretable.
+
+## Predictor selection
+
+The next step is selecting the predictors to include in the model alongside `am`. As I don't know anything about the predictors, I will select to enter them into the model based purely on their relationship with the outcome (with higher correlations meaning they will be entered sooner). I wrote a function below which takes correlates each predictor with the outcome and ranks them (in absolute values) in descending order.
+
+```{r cor_rank}
+cor.list <- c()
+outcome.cor <- function(predictor, ...) {
+    x <- cor(mtcars$mpg, predictor)
+    cor.list <- c(cor.list, x)
+}
+cor.list <- sapply(mtcars[ , c(3, 6:8, 10:11)], outcome.cor)
+sort(abs(cor.list), decreasing = TRUE)
+```
+
+You can see the outcome that has the strongest bivariate relationship with `mpg` is `wt`, then `cyl`, etc. We will use this order to enter variables into our model. One way of working out if adding a new variable improves the fit of the model is comparing models using the `anova` function. This function compares two nested models and returns the F-change and its associated significance level when adding the new variable(s). 
+Let's start by building all of the nested models. I will add one main effect at a time, following the bivariate relationship strength between each predictor and the outcome.
+
+```{r building_models, message = FALSE, warning = FALSE}
+model1 <- lm(mpg ~ am.f, data = mtcars)
+model2 <- lm(mpg ~ am.f + wt, data = mtcars)
+model3 <- lm(mpg ~ am.f + wt + cyl.f, data = mtcars)
+model4 <- lm(mpg ~ am.f + wt + cyl.f + drat, data = mtcars)
+model5 <- lm(mpg ~ am.f + wt + cyl.f + carb.f, data = mtcars)
+model6 <- lm(mpg ~ am.f + wt + cyl.f + gear.f, data = mtcars)
+model7 <- lm(mpg ~ am.f + wt + cyl.f + qsec, data = mtcars)
+```
+
+I have then written a function below which tests pairs of nested models and stores the two models and the significance of the F-change in a dataframe to make it easy to check whether a change improves the model fit. You can see I have run the models one by one and checked them, and only retained variables that improved model fit.
+
+```{r model_selection, message = FALSE, warning = FALSE}
+lmfits <- data.frame()
+lmfit.table <- function(model1, model2, ...) {
+    models <- sub("Model 1: ", "", attr(anova(model1, model2), "heading")[2])
+    x <- c(sub("\\n.*", "", models),
+           sub(".*Model 2: ", "", models), 
+           round(anova(model1, model2)$"Pr(>F)"[2], 3))
+    lmfits <- rbind(lmfits, x)
+}
+
+lmfits <- lmfit.table(model1, model2)
+for (i in 1:3) {
+    lmfits[ , i] <- as.character(lmfits[ , i])
+}
+names(lmfits) <- c("Model 1", "Model 2", "p-value of model improvement")
+
+lmfits <- lmfit.table(model2, model3)
+lmfits <- lmfit.table(model3, model4)
+lmfits <- lmfit.table(model3, model5)
+lmfits <- lmfit.table(model3, model6)
+lmfits <- lmfit.table(model3, model7)
+
+require(knitr)
+kable(lmfits)
+```
+
+There were two variables that improved model fit in addition to `am`: `wt` and `cyl`. I will now check whether adding interaction terms between these variables and these variables improves model fit:
+```{r interaction_model_fit}
+model8 <- lm(mpg ~ am.f + wt + cyl.f + am.f * wt, data = mtcars)
+model9 <- lm(mpg ~ am.f + wt + cyl.f + am.f * wt + am.f * cyl.f, data = mtcars)
+model10 <- lm(mpg ~ am.f + wt + am.f * wt, data = mtcars)
+
+lmfits <- lmfit.table(model3, model8)
+lmfits <- lmfit.table(model8, model9)
+lmfits <- lmfit.table(model2, model10)
+
+kable(lmfits[7:9, ])
+```
+
+We now have two viable models, `model8` and `model10`. To select between these, I will have a look at the $R^2$ and variance inflation factor (VIF) of each of the models.
+
+```{r final_model_selection, message = FALSE}
+require(car)
+round(summary(model10)$r.squared, 3)
+vif(model10)
+round(summary(model8)$r.squared, 3)
+vif(model8)[ , 1]
+```
+
+The difference in $R^2$ between the two models is small, but the inclusion of `cyl` in the model both increases the variance inflation and decreases the interpretability of the model. Moreover, number of cylinders is highly correlated with car weight (`r round(cor(mtcars$wt, mtcars$cyl), 3)`), meaning it is likely explaining a lot of the same variance as weight. As such, the final model included `am.f`, `wt`, and their interaction term.
+
+## Model diagnostics
+
+Having chosen the final model, it is time to check whether it has any issues with how it fits the data. A convenient built in function is 4 diagnostic plots for lm objects:
+
+```{r diagnostic_plots, message = FALSE, warning = FALSE, fig.width = 12, fig.height = 8}
+final.model <- lm(mpg ~ am.f + wt + am.f * wt, data = mtcars)
+par(mfrow = c(2,2))
+plot(final.model)
+```
+
+The **Residuals vs Fitted** plot (and its standardised version, the **Scale Location** plot) show that higher MPG values tend to have higher residuals. In addition, there are three values with unusually high residual error (poor fit) - Merc 240DD, Fiat128 and Toyota Corolla, indicating that the model is a poor fit for both cars with high MPG (past about 28 MPG) and these three models. The **Normal Q-Q** plot of residuals indicates that errors are not normally distributed, again especially for high levels of MPG and the three specific car models that had high residuals. Finally, the **Residuals vs Leverage** plot demonstrates that are a number of values with high leverage and low residuals, which may possibly be biasing the trend line.
+
+To more closely examine the effect of variables with high leverage and/or influence on the regression line I 
+
+```{r outlier_plots, message = FALSE, warning = FALSE, fig.width = 14, fig.height = 6}
+# First build an interaction plot between the two
+gp <- ggplot(data=mtcars, aes(x=wt, y=mpg, colour=am.f)) + 
+        geom_point(alpha = 0.7) +
+        geom_abline(intercept = coef(final.model)[1], slope = coef(final.model)[3], 
+                    size = 1, color = "#B21212") +
+        geom_abline(intercept = coef(final.model)[1] + coef(final.model)[2], 
+                    slope = coef(final.model)[3] + coef(final.model)[4], 
+                    size = 1, color = "#0971B2") +
+        scale_colour_manual(name="Transmission",  values =c("#B21212", "#0971B2")) +
+        ylab("Miles per gallon") +    
+        xlab("Weight (`000 lbs)") +
+        theme_bw()
+
+
+mtcars$name <- row.names(mtcars)
+mtcars$hatvalues <- round(hatvalues(final.model), 3)
+top.leverage = sort(round(hatvalues(final.model), 3), decreasing = TRUE)
+head(top.leverage)
+
+gp <- ggplot(data=mtcars, aes(x=wt, y=mpg, colour=am.f)) + 
+        geom_point(alpha = 0.7) +
+        geom_abline(intercept = coef(final.model)[1], slope = coef(final.model)[3], 
+                    size = 1, color = "#B21212") +
+        geom_abline(intercept = coef(final.model)[1] + coef(final.model)[2], 
+                    slope = coef(final.model)[3] + coef(final.model)[4], 
+                    size = 1, color = "#0971B2") +
+        scale_colour_manual(name="Transmission",  values =c("#B21212", "#0971B2")) +
+        ylab("Miles per gallon") +    
+        xlab("Weight (`000 lbs)") +
+        theme_bw()
+
+g1 <- gp + geom_text(data=subset(mtcars, abs(hatvalues) >= top.leverage[3]), 
+                     aes(wt,mpg,label=name), size = 4, hjust=1, vjust=0) +
+        ggtitle("Three Points with Highest Leverage (hatvalues)")
+
+mtcars$dfbetas <- round(dfbetas(final.model)[, 2], 3)
+top.influence = sort(round(abs(dfbetas(final.model)[, 2]), 3), decreasing = TRUE)
+head(top.influence)
+
+g2 <- gp + geom_text(data=subset(mtcars, abs(dfbetas) >= top.influence[3]), 
+                     aes(wt,mpg,label=name), size = 4, hjust=1, vjust=0) +
+        ggtitle("Three Points with Highest Influence (dfbetas)")
+
+library(gridExtra)
+grid.arrange(g1, g2, nrow = 1, ncol = 2)
+```        
