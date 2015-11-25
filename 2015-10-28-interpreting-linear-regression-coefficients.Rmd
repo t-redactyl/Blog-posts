@@ -114,11 +114,11 @@ library(ggplot2)
 gp <- ggplot(data=mtcars, aes(x=centred.wt, y=mpg, colour=am.f)) + 
         geom_point(alpha = 0.7) +
         geom_abline(intercept = coef(centred.model)[1], slope = coef(centred.model)[3], 
-                    size = 1, color = "#B21212") +
+                    size = 1, color = "#FF3721") +
         geom_abline(intercept = coef(centred.model)[1] + coef(centred.model)[2], 
                     slope = coef(centred.model)[3] + coef(centred.model)[4], 
-                    size = 1, color = "#0971B2") +
-        scale_colour_manual(name="Transmission",  values =c("#B21212", "#0971B2")) +
+                    size = 1, color = "#4271AE") +
+        scale_colour_manual(name="Transmission",  values =c("#FF3721", "#4271AE")) +
         ylab("Miles per gallon") +    
         xlab("Centred Weight (`000 lbs)") +
         theme_bw()
