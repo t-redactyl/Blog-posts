@@ -1,0 +1,10 @@
+base
+rpart
+lattice
+ggplot2
+caret
+RGtk2
+cairoDevice
+rattle
+rpart.plot
+RColorBrewer
