@@ -1,24 +1,22 @@
 ---
-title: Avoiding the crowds in Melbourne CBD using data
+title: Planning your New Year's Eve in Melbourne using data
 date: 2015-12-30
 comments: false
 tags: R, Public Data
-keywords: rlanguage, permutation tests, simulations, data science, hypothesis testing
+keywords: rlanguage, data science, new years eve, public data, melbourne
 ---
 
-```{r setup, cache = FALSE, echo = FALSE, message = FALSE, warning = FALSE, tidy = FALSE}
-knitr::opts_chunk$set(message = F, error = F, warning = F, comment = NA, fig.align = 'center', dpi = 100, fig.width=6, fig.height=5, tidy = F)
+Like I've said in a previous post [I'm not a huge fan of crowds]({filename}2015-10-21-avoiding-the-crowds-in-melbourne-cbd-using-data.md), so I tend to spend my New Year's Eve at home. That's totally as fun as going out, right?
+
+```{r}
+#<img src="/figure/cinderella_nye.gif" title="NYE" alt="NYE" style="display: block; margin: auto;" />
 ```
-
-Like I've said in a previous post [I'm not a huge fan of crowds]({filename}2015-10-21-avoiding-the-crowds-in-melbourne-cbd-using-data.md), so I tend to spend my New Year's Eve at home. It's totally as fun as going out, right?
-
-<img src="/figure/cinderella_nye.gif" title="NYE" alt="NYE" style="display: block; margin: auto;" />
-
+    
 For those of you with the patience to make your way into the city, I've put together a New Year's Eve edition of my analysis of the pedestrian traffic in Melbourne CBD. Hopefully this will help you avoid the worst of the crowds and have a fun and low-stress NYE.
 
 ## Reading in and preparing the data
 
-As with the last post, I will be using the City of Melbourne's [publicly available dataset](https://data.melbourne.vic.gov.au/Transport-Movement/Pedestrian-Counts/b2ak-trbp) tracking the number of pedestrians per hour for major CBD locations. The map showing each of the sensors in these data is [here](http://www.pedestrian.melbourne.vic.gov.au/#date=16-10-2015&time=16&sensor=Swa123_T).
+As with the last post, I will be using the City of Melbourne's [publicly available dataset](https://data.melbourne.vic.gov.au/Transport-Movement/Pedestrian-Counts/b2ak-trbp) tracking the number of pedestrians per hour for major CBD locations. The map showing the locations of the sensors in these data is [here](http://www.pedestrian.melbourne.vic.gov.au/#date=16-10-2015&time=16&sensor=Swa123_T).
 
 ```{r loading_data, cache = TRUE}
 pedestrians <- read.csv(url("https://data.melbourne.vic.gov.au/api/views/b2ak-trbp/rows.csv"))
@@ -26,22 +24,22 @@ pedestrians <- read.csv(url("https://data.melbourne.vic.gov.au/api/views/b2ak-tr
 
 ### Extracting the New Year's Eve data
 
-As these data have every day from early May 2009, we need to first extract the available New Year's Eves in the dataset. In order to extract the data for New Year's Eve, we first convert the string variable `Date_Time` into a true datetime variable (in the POSIXct format). 
+The first thing we need to do is to narrow the data down to just New Year's Eve. To begin, we convert the string variable `Date_Time` into a true datetime variable (in the POSIXct format). 
 
 ```{r changing_to_datetime, cache = TRUE, message = FALSE}
 pedestrians$date <- as.POSIXct(as.character(pedestrians$Date_Time), 
                                format = "%d-%b-%Y %H:%M")
 ```
 
-Let's first have a look at how many New Year's Eves of data we have. 
+We then have a look at how many years of data we have. 
 
-```{r summary_of_years}
+```{r summary_of_years, message = FALSE}
 head(pedestrians$date, 1); tail(pedestrians$date, 1)
 ```
 
-We have New Year's Eve for 2009-2014, but obviously we don't have the 31st of December for this year yet! We'll extract the 6 years of data we have. I've decided to start my analysis at 6pm on New Year's Eve and finish at 4am on New Year's Day.
+The earliest New Year's Eve we have is 2009, and the latest is last year's (2014), giving us 6 years in total. I've decided to start my analysis at 6pm on New Year's Eve and finish at 4am on New Year's Day. Let's extract it now:
 
-```{r keep_only_nye}
+```{r keep_only_nye, message = FALSE}
 p.subset <- with(pedestrians, pedestrians 
                   [(date >= "2009-12-31 18:00:00" & date <= "2010-01-01 04:00:00") |
                    (date >= "2010-12-31 18:00:00" & date <= "2011-01-01 04:00:00") |
@@ -54,33 +52,20 @@ p.subset <- p.subset[complete.cases(p.subset), ]
 
 ### Checking the number of sites per year
 
-We now have a dataset with the number of pedestrians by sensor site and hour. We can get an overview of the number of sites we have data on for each hour by running a frequency table on `date` and feeding this into a `data.frame`.
+We now have a dataset with the number of pedestrians by sensor site, year and hour. We can get an overview of the number of sites we have data on for each hour by running a frequency table on `date` and feeding this into a `data.frame`.
 
-```{r table_of_datapoints}
+```{r table_of_datapoints, message = FALSE}
 dates <- as.data.frame(table(p.subset$date))
 ```
 
-If we do a basic line plot, we can get an overview of whether the number of sites is consistent across the years.
-
-```{r number_of_sites}
-require(ggplot2)
-ggplot(dates, aes(x = Var1, y = Freq, group = 1)) + 
-    geom_line() +
-    geom_point() +
-        ggtitle("Number of sites per time point") + 
-        labs(x="Time point", y="Number of sites") +
-        theme_bw()
-```
-
-The later years have substantially more sites than the earlier years (17-18 in 2009-2012, compared to 30-32 in 2013-2014). We'll keep this in mind when looking at how our sensor sites perform.
+Looking at this table, the later years have substantially more sites than the earlier years (17-18 in 2009-2012, compared to 30-32 in 2013-2014). We'll keep this in mind when looking at how our sensor sites perform.
 
 ### Create year and hour variables
 
 Finally, we'll extract the year and hour information from the `date` variable and convert them into labelled factor variables.
 
-```{r}
+```{r making_fireworks, message = FALSE, message = FALSE}
 library(lubridate); library(plyr)
-table(hour(p.subset$date))
 p.subset$hour <- hour(p.subset$date)
 p.subset$hour <- revalue(as.character(p.subset$hour), 
                          c("18" = "0", "19" = "1", "20" = "2", "21" = "3",
@@ -92,12 +77,18 @@ p.subset$hour <- factor(p.subset$hour,
                                    "12am", "1am", "2am", "3am", "4am"))
 
 p.subset$year <- as.numeric(0)
-p.subset$year[p.subset$date >= "2009-12-31 18:00:00" & p.subset$date <= "2010-01-01 04:00:00"] <- 1
-p.subset$year[p.subset$date >= "2010-12-31 18:00:00" & p.subset$date <= "2011-01-01 04:00:00"] <- 2
-p.subset$year[p.subset$date >= "2011-12-31 18:00:00" & p.subset$date <= "2012-01-01 04:00:00"] <- 3
-p.subset$year[p.subset$date >= "2012-12-31 18:00:00" & p.subset$date <= "2013-01-01 04:00:00"] <- 4
-p.subset$year[p.subset$date >= "2013-12-31 18:00:00" & p.subset$date <= "2014-01-01 04:00:00"] <- 5
-p.subset$year[p.subset$date >= "2014-12-31 18:00:00" & p.subset$date <= "2015-01-01 04:00:00"] <- 6
+p.subset$year[p.subset$date >= "2009-12-31 18:00:00" 
+              & p.subset$date <= "2010-01-01 04:00:00"] <- 1
+p.subset$year[p.subset$date >= "2010-12-31 18:00:00" 
+              & p.subset$date <= "2011-01-01 04:00:00"] <- 2
+p.subset$year[p.subset$date >= "2011-12-31 18:00:00" 
+              & p.subset$date <= "2012-01-01 04:00:00"] <- 3
+p.subset$year[p.subset$date >= "2012-12-31 18:00:00" 
+              & p.subset$date <= "2013-01-01 04:00:00"] <- 4
+p.subset$year[p.subset$date >= "2013-12-31 18:00:00" 
+              & p.subset$date <= "2014-01-01 04:00:00"] <- 5
+p.subset$year[p.subset$date >= "2014-12-31 18:00:00" 
+              & p.subset$date <= "2015-01-01 04:00:00"] <- 6
 p.subset$year <- factor(p.subset$year, 
                         labels = c("2009", "2010", "2011", "2012", "2013", "2014"))
 ```
@@ -106,13 +97,15 @@ We're now ready to start planning your New Year's Eve in Melbourne City!
 
 ## Watching the fireworks display
 
-You might be planning to watch the midnight fireworks to welcome in 2016. This year the City of Melbourne has planned [four sites](http://www.thatsmelbourne.com.au/nye/midnight) for viewing the fireworks display, which will all have very similar live music and entertainment from 9pm to 1am. The sites are King's Domain, Treasury Gardens, Flagstaff Gardens and Docklands.
+You might be planning to watch the midnight fireworks to welcome in 2016. This year the City of Melbourne has planned [four sites](http://www.thatsmelbourne.com.au/nye/midnight) for viewing the fireworks display, which will all have very similar live music and entertainment from 9pm to 1am. The sites are King's Domain, Treasury Gardens, Flagstaff Gardens and Docklands, as shown on this [nice little map from the City of Melbourne](http://thatsmelbourne.com.au/nye/midnight).
 
-<img src="/figure/nye_2015_sites.jpg" title="NYE map" alt="Map of sites for NYE" style="display: block; margin: auto;" />
-
+```{r}
+#<img src="/figure/nye_2015_sites.jpg" title="NYE map" alt="Map of sites for NYE" style="display: block; margin: auto;" />
+```
+    
 In order to have a look at the traffic associated with each of these sites, I found the closest sensors to each and marked them as belonging to the site in a new factor variable `fireworks` in the `p.subset` dataset.
 
-```{r kings_domain_sites, echo = FALSE}
+```{r kings_domain_sites, echo = FALSE, message = FALSE}
 p.subset$fireworks <- as.numeric(NA)
 p.subset$fireworks[p.subset$Sensor_Name %in% 
                        c("Princes Bridge", "St Kilda-Alexandra Gardens", 
@@ -133,7 +126,7 @@ As these fireworks events may not have been held in every year since 2009, I the
 
 I've plotted each of the sites in separate graphs below.
 
-```{r fireworks_years_graph, echo = FALSE}
+```{r fireworks_years_graph, message = FALSE, echo = FALSE, fig.align = 'center', dpi = 100, fig.width = 7.5, fig.height = 6.75}
 library(ggplot2); library(gridExtra)
 fireworks.average <- ddply(p.subset, c("fireworks", "year", "hour"), summarise,
                            n_peds = sum(Hourly_Counts),
@@ -148,8 +141,9 @@ g1 <- ggplot(data = fireworks.average[(fireworks.average$fireworks == "King's Do
         ggtitle("King's Domain") + 
         labs(x="Hour", y="Number of pedestrians") +
         theme_bw() +
-        theme(plot.title = element_text(size = 16, face = "bold"),
-              text = element_text(size = 14),
+        theme(plot.title = element_text(size = 12, face = "bold"),
+              text = element_text(size = 10),
+              axis.text.x=element_text(colour="black", size = 7), 
               panel.border = element_blank(),
               axis.line = element_line(size=0.4, colour = "black"),
               legend.position = "bottom", 
@@ -164,8 +158,9 @@ g2 <- ggplot(data = fireworks.average[(fireworks.average$fireworks == "Treasury 
         ggtitle("Treasury Gardens") + 
         labs(x="Hour", y="Number of pedestrians") +
         theme_bw() +
-        theme(plot.title = element_text(size = 16, face = "bold"),
-              text = element_text(size = 14),
+        theme(plot.title = element_text(size = 12, face = "bold"),
+              text = element_text(size = 10),
+              axis.text.x=element_text(colour="black", size = 7), 
               panel.border = element_blank(),
               axis.line = element_line(size=0.4, colour = "black"),
               legend.position = "bottom", 
@@ -180,8 +175,9 @@ g3 <- ggplot(data = fireworks.average[(fireworks.average$fireworks == "Flagstaff
         ggtitle("Flagstaff Gardens") + 
         labs(x="Hour", y="Number of pedestrians") +
         theme_bw() +
-        theme(plot.title = element_text(size = 16, face = "bold"),
-              text = element_text(size = 14),
+        theme(plot.title = element_text(size = 12, face = "bold"),
+              text = element_text(size = 10),
+              axis.text.x=element_text(colour="black", size = 7), 
               panel.border = element_blank(),
               axis.line = element_line(size=0.4, colour = "black"),
               legend.position = "bottom", 
@@ -196,8 +192,9 @@ g4 <- ggplot(data = fireworks.average[(fireworks.average$fireworks == "Docklands
         ggtitle("Docklands") + 
         labs(x="Hour", y="Number of pedestrians") +
         theme_bw() +
-        theme(plot.title = element_text(size = 16, face = "bold"),
-              text = element_text(size = 14),
+        theme(plot.title = element_text(size = 12, face = "bold"),
+              text = element_text(size = 10),
+              axis.text.x=element_text(colour="black", size = 7), 
               panel.border = element_blank(),
               axis.line = element_line(size=0.4, colour = "black"),
               legend.position = "bottom", 
@@ -209,7 +206,7 @@ grid.arrange(g1, g2, g3, g4, nrow = 2, ncol = 2)
 
 You can see that the pattern of traffic is not the same every year, especially for Treasury Gardens and Flagstaff Gardens. This is probably because either NYE activities at these sites has just started in the last couple of years, or they recently became more popular. Either way, it is probably more accurate to use the most recent year's data (2014) to plot the potential traffic at the fireworks events this year, with a caveat that these patterns seem quite variable year-to-year in every site but Docklands.
 
-```{r, echo = FALSE}
+```{r, echo = FALSE, fig.width=5.5, fig.height=4.5, fig.align='center', dpi = 100}
 g1 <- ggplot(data = fireworks.average[(fireworks.average$year == "2014"), ], 
        aes(x = hour, y = mean_peds, group = fireworks, colour = fireworks)) + 
         geom_line() +
@@ -217,8 +214,8 @@ g1 <- ggplot(data = fireworks.average[(fireworks.average$year == "2014"), ],
         ggtitle("Fireworks events traffic, NYE 2014") + 
         labs(x="Hour", y="Number of pedestrians") +
         theme_bw() +
-        theme(plot.title = element_text(size = 16, face = "bold"),
-              text = element_text(size = 14),
+        theme(plot.title = element_text(size = 14, face = "bold"),
+              text = element_text(size = 10),
               panel.border = element_blank(),
               axis.line = element_line(size=0.4, colour = "black"),
               legend.position = "bottom", 
@@ -227,11 +224,11 @@ g1 <- ggplot(data = fireworks.average[(fireworks.average$year == "2014"), ],
 g1
 ```
 
-Despite the fact that the firework events being held at each of the sites look pretty much identical, Docklands and King's Domain are far busier than Treasury Gardens and Flagstaff Gardens. If you want to go to one of the popular sites, you'd be better off going to Docklands and grabbing an early seat than trying to fight the crowds at King's Domain.
+Despite the fact that the firework events being held at each of the sites look pretty much identical, Docklands and King's Domain are far busier than Treasury Gardens and Flagstaff Gardens. It looks like your night will be far less crowded if you go to the celebrations at Flagstaff or Treasury Gardens. If you do want to go to one of the popular sites, you'd be better off going to Docklands and grabbing an early seat than trying to fight the crowds at King's Domain.
 
 ## Going out in the CBD
 
-Instead of watching the fireworks, perhaps you are planning to go out in the CBD. To have a look at traffic in this area, I used the concentration of sensors around Elizabeth and Swanston Streets as this is where the majority of sensors in the city are located. I've separated them into 5 sites: Lonsdale Street, Chinatown, Bourke Street, Collins Street and City Square.
+Instead of watching the fireworks, perhaps you are planning to go out in the CBD. To have a look at traffic in this area, I used the concentration of sensors around Elizabeth and Swanston Streets as this is where the majority of sensors in the city are located. I've separated them into 5 sites: Lonsdale Street, Chinatown, Bourke Street, Collins Street and City Square. I then categorised the corresponding sensors in the `cbd` variable in `p.subset`.
 
 ```{r marking_CBD}
 p.subset$cbd <- as.numeric(NA)
@@ -257,7 +254,7 @@ p.subset$cbd <- factor(p.subset$cbd,
 
 Again, we'll have a look at the mean number of pedestrians each sensor captures per hour, site and year.
 
-```{r graphing_cbd_by_year, echo = FALSE}
+```{r graphing_cbd_by_year, message = FALSE, echo = FALSE, fig.align = 'center', dpi = 100, fig.width = 7.5, fig.height = 10.125}
 cbd.average <- ddply(p.subset, c("cbd", "year", "hour"), summarise,
                      n_peds = sum(Hourly_Counts),
                      mean_peds = mean(Hourly_Counts))
@@ -271,8 +268,9 @@ g1 <- ggplot(data = cbd.average[(cbd.average$cbd == "Lonsdale Street"), ],
         ggtitle("Lonsdale Street") + 
         labs(x="Hour", y="Number of pedestrians") +
         theme_bw() +
-        theme(plot.title = element_text(size = 16, face = "bold"),
-              text = element_text(size = 14),
+        theme(plot.title = element_text(size = 12, face = "bold"),
+              text = element_text(size = 10),
+              axis.text.x=element_text(colour="black", size = 7), 
               panel.border = element_blank(),
               axis.line = element_line(size=0.4, colour = "black"),
               legend.position = "bottom", 
@@ -287,8 +285,9 @@ g2 <- ggplot(data = cbd.average[(cbd.average$cbd == "Chinatown"), ],
         ggtitle("Chinatown") + 
         labs(x="Hour", y="Number of pedestrians") +
         theme_bw() +
-        theme(plot.title = element_text(size = 16, face = "bold"),
-              text = element_text(size = 14),
+        theme(plot.title = element_text(size = 12, face = "bold"),
+              text = element_text(size = 10),
+              axis.text.x=element_text(colour="black", size = 7), 
               panel.border = element_blank(),
               axis.line = element_line(size=0.4, colour = "black"),
               legend.position = "bottom", 
@@ -303,8 +302,9 @@ g3 <- ggplot(data = cbd.average[(cbd.average$cbd == "Bourke Street"), ],
         ggtitle("Bourke Street") + 
         labs(x="Hour", y="Number of pedestrians") +
         theme_bw() +
-        theme(plot.title = element_text(size = 16, face = "bold"),
-              text = element_text(size = 14),
+        theme(plot.title = element_text(size = 12, face = "bold"),
+              text = element_text(size = 10),
+              axis.text.x=element_text(colour="black", size = 7), 
               panel.border = element_blank(),
               axis.line = element_line(size=0.4, colour = "black"),
               legend.position = "bottom", 
@@ -319,8 +319,9 @@ g4 <- ggplot(data = cbd.average[(cbd.average$cbd == "Collins Street"), ],
         ggtitle("Collins Street") + 
         labs(x="Hour", y="Number of pedestrians") +
         theme_bw() +
-        theme(plot.title = element_text(size = 16, face = "bold"),
-              text = element_text(size = 14),
+        theme(plot.title = element_text(size = 12, face = "bold"),
+              text = element_text(size = 10),
+              axis.text.x=element_text(colour="black", size = 7), 
               panel.border = element_blank(),
               axis.line = element_line(size=0.4, colour = "black"),
               legend.position = "bottom", 
@@ -335,8 +336,9 @@ g5 <- ggplot(data = cbd.average[(cbd.average$cbd == "City Square"), ],
         ggtitle("City Square") + 
         labs(x="Hour", y="Number of pedestrians") +
         theme_bw() +
-        theme(plot.title = element_text(size = 16, face = "bold"),
-              text = element_text(size = 14),
+        theme(plot.title = element_text(size = 12, face = "bold"),
+              text = element_text(size = 10),
+              axis.text.x=element_text(colour="black", size = 7), 
               panel.border = element_blank(),
               axis.line = element_line(size=0.4, colour = "black"),
               legend.position = "bottom", 
@@ -348,16 +350,16 @@ grid.arrange(g1, g2, g3, g4, g5, nrow = 3, ncol = 2)
 
 Three of the sites only have data for the last two years, suggesting that again using data from 2014 may be the best predictor of traffic in 2015.
 
-```{r graphing_cbd_in_2014, echo = FALSE}
+```{r graphing_cbd_in_2014, echo = FALSE, fig.width=5.5, fig.height=4.5, fig.align='center', dpi = 100}
 g1 <- ggplot(data = cbd.average[(cbd.average$year == "2014"), ], 
        aes(x = hour, y = mean_peds, group = cbd, colour = cbd)) + 
         geom_line() +
         geom_point() +
-        ggtitle("CBD events traffic, NYE 2014") + 
+        ggtitle("CBD traffic, NYE 2014") + 
         labs(x="Hour", y="Number of pedestrians") +
         theme_bw() +
-        theme(plot.title = element_text(size = 16, face = "bold"),
-              text = element_text(size = 14),
+        theme(plot.title = element_text(size = 14, face = "bold"),
+              text = element_text(size = 10),
               panel.border = element_blank(),
               axis.line = element_line(size=0.4, colour = "black"),
               legend.position = "bottom", 
@@ -366,11 +368,11 @@ g1 <- ggplot(data = cbd.average[(cbd.average$year == "2014"), ],
 g1
 ```
 
-City Sqaure is by far the busiest place in the CBD over the night, followed by Collins Street. It is much quieter around Bourke Street, Chinatown and Lonsdale Street. Even after 1am City Square and Collins Street are extremely crowded, so if you're trying to get home you'd be better off trying the northern part of the CBD. Speaking of getting home...
+City Square is by far the busiest place in the CBD over the night, followed by Collins Street. It is much quieter around Bourke Street, Chinatown and Lonsdale Street. Even after 1am City Square and Collins Street are extremely crowded, so if you're trying to get home you'd be better off trying the northern part of the CBD. Speaking of getting home...
 
 ## Getting there and home
 
-Ahhh, battling the crowds at the CBD events is one thing, but dealing with everyone at the train stations is another. To help you plan your journey in and out of the city, I've also analysed the city loop train station pedestrian traffic. As with my previous post, I have not included Parliament station as the sensors don't really cover it properly. I've also included the traffic around the stations as part of the site as you'll need to deal with these crowds to get in and out of the stations.
+Ahhh, battling the crowds at the CBD events is one thing, but dealing with everyone at the train stations is another. To help you plan your journey in and out of the city, I've also looked at the city loop train station pedestrian traffic. As with my previous post, I have not included Parliament station as the sensors don't really cover it properly. I've also included the traffic around the stations as part of the site as you'll need to deal with these crowds to get in and out of the stations.
 
 ```{r marking_stations}
 p.subset$stations <- as.numeric(NA)
@@ -392,15 +394,12 @@ p.subset$stations <- factor(p.subset$stations,
 
 As with the other sites, I have taken the mean number of pedestrians per sensor, hour and year to get an indication of the density of pedestrians at each site.
 
-```{r graphing_stations_by_year, echo = FALSE}
-# Check the average peds per year for each station
-    # Southern Cross
+```{r graphing_stations_by_year, message = FALSE, echo = FALSE, fig.align = 'center', dpi = 100, fig.width = 7.5, fig.height = 6.75}
 stations.average <- ddply(p.subset, c("stations", "year", "hour"), summarise,
                           n_peds = sum(Hourly_Counts),
                           mean_peds = mean(Hourly_Counts))
 stations.average <- stations.average[complete.cases(stations.average), ]
 
-    # Flinders Street
 g1 <- ggplot(data = stations.average[(stations.average$stations == "Flinders Street"), ], 
        aes(x = hour, y = mean_peds, group = year, colour = year)) + 
         geom_line() +
@@ -408,15 +407,15 @@ g1 <- ggplot(data = stations.average[(stations.average$stations == "Flinders Str
         ggtitle("Flinders Street") + 
         labs(x="Hour", y="Number of pedestrians") +
         theme_bw() +
-        theme(plot.title = element_text(size = 16, face = "bold"),
-              text = element_text(size = 14),
+        theme(plot.title = element_text(size = 12, face = "bold"),
+              text = element_text(size = 10),
+              axis.text.x=element_text(colour="black", size = 7), 
               panel.border = element_blank(),
               axis.line = element_line(size=0.4, colour = "black"),
               legend.position = "bottom", 
               legend.title = element_blank(),
               legend.key=element_rect(fill="white", colour="white"))
 
-    # Southern Cross
 g2 <- ggplot(data = stations.average[(stations.average$stations == "Southern Cross"), ], 
        aes(x = hour, y = mean_peds, group = year, colour = year)) + 
         geom_line() +
@@ -424,15 +423,15 @@ g2 <- ggplot(data = stations.average[(stations.average$stations == "Southern Cro
         ggtitle("Southern Cross") + 
         labs(x="Hour", y="Number of pedestrians") +
         theme_bw() +
-        theme(plot.title = element_text(size = 16, face = "bold"),
-              text = element_text(size = 14),
+        theme(plot.title = element_text(size = 12, face = "bold"),
+              text = element_text(size = 10),
+              axis.text.x=element_text(colour="black", size = 7), 
               panel.border = element_blank(),
               axis.line = element_line(size=0.4, colour = "black"),
               legend.position = "bottom", 
               legend.title = element_blank(),
               legend.key=element_rect(fill="white", colour="white"))
 
-    # Melbourne Central
 g3 <- ggplot(data = stations.average[(stations.average$stations == "Melbourne Central"), ], 
        aes(x = hour, y = mean_peds, group = year, colour = year)) + 
         geom_line() +
@@ -440,15 +439,15 @@ g3 <- ggplot(data = stations.average[(stations.average$stations == "Melbourne Ce
         ggtitle("Melbourne Central") + 
         labs(x="Hour", y="Number of pedestrians") +
         theme_bw() +
-        theme(plot.title = element_text(size = 16, face = "bold"),
-              text = element_text(size = 14),
+        theme(plot.title = element_text(size = 12, face = "bold"),
+              text = element_text(size = 10),
+              axis.text.x=element_text(colour="black", size = 7), 
               panel.border = element_blank(),
               axis.line = element_line(size=0.4, colour = "black"),
               legend.position = "bottom", 
               legend.title = element_blank(),
               legend.key=element_rect(fill="white", colour="white"))
 
-    # Flagstaff station
 g4 <- ggplot(data = stations.average[(stations.average$stations == "Flagstaff"), ], 
        aes(x = hour, y = mean_peds, group = year, colour = year)) + 
         geom_line() +
@@ -456,21 +455,21 @@ g4 <- ggplot(data = stations.average[(stations.average$stations == "Flagstaff"),
         ggtitle("Flagstaff") + 
         labs(x="Hour", y="Number of pedestrians") +
         theme_bw() +
-        theme(plot.title = element_text(size = 16, face = "bold"),
-              text = element_text(size = 14),
+        theme(plot.title = element_text(size = 12, face = "bold"),
+              text = element_text(size = 10),
+              axis.text.x=element_text(colour="black", size = 7), 
               panel.border = element_blank(),
               axis.line = element_line(size=0.4, colour = "black"),
               legend.position = "bottom", 
               legend.title = element_blank(),
               legend.key=element_rect(fill="white", colour="white"))
-g4
 
 grid.arrange(g1, g2, g3, g4, nrow = 2, ncol = 2)
 ```
 
 As with the other years, we see quite a bit of variance in traffic across the years, and we'll therefore use the 2014 data to figure out the density of people at each of the stations across NYE.
 
-```{r graphing_stations_in_2014, echo = FALSE}
+```{r graphing_stations_in_2014, echo = FALSE, fig.width=5.5, fig.height=4.5, fig.align='center', dpi = 100}
 g1 <- ggplot(data = stations.average[(stations.average$year == "2014"), ], 
        aes(x = hour, y = mean_peds, group = stations, colour = stations)) + 
         geom_line() +
@@ -478,8 +477,8 @@ g1 <- ggplot(data = stations.average[(stations.average$year == "2014"), ],
         ggtitle("City loop stations traffic, NYE 2014") + 
         labs(x="Hour", y="Number of pedestrians") +
         theme_bw() +
-        theme(plot.title = element_text(size = 16, face = "bold"),
-              text = element_text(size = 14),
+        theme(plot.title = element_text(size = 14, face = "bold"),
+              text = element_text(size = 10),
               panel.border = element_blank(),
               axis.line = element_line(size=0.4, colour = "black"),
               legend.position = "bottom", 
@@ -488,6 +487,7 @@ g1 <- ggplot(data = stations.average[(stations.average$year == "2014"), ],
 g1
 ```
 
-As we saw in the nice little map I posted above from the City of Melbourne, Flagstaff and Melbourne Central will be closing at 11:45pm on New Year's Eve. If you're planning to go home before midnight, Southern Cross and Flagstaff are predicted to be significantly less crowded than Flinders Street and Melbourne Central. However, if you're going to stay for the whole night you may be best trying to get to Southern Cross to avoid the crush at Flinder Street Station.
+As we saw in the map I posted above from the City of Melbourne, Flagstaff and Melbourne Central will be closing at 11:45pm on New Year's Eve. If you're planning to go home before midnight, Southern Cross and Flagstaff are likely to be significantly less crowded than Flinders Street and Melbourne Central based on last year's traffic. However, if you're going to stay for the whole night you may be best trying to get to Southern Cross to avoid the crush at Flinders Street Station.
 
+And with that, we're done! Have a safe and fun New Year's Eve, and I will see you in 2016!
 
