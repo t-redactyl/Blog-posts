@@ -1,0 +1,176 @@
+---
+title: Group operations in R
+date: 2016-03-27
+comments: false
+tags: R, programming tips
+keywords: rlanguage, group operations, summary statistics, birthwt, plyr, doBy
+---
+
+One of the things I really missed when I moved from Stata to R was how easy it was to do group operations; that is, being able to apply summary statistics by levels of a variable or variables in a dataset. Fortunately for me, I just needed a bit of time exploring R's massive number of functions in order to find that not only does R have as good functionality for producing statistics by groups, it offers far more flexibility and customisation than Stata. In this week's blog post, I will describe 4 functions that have become my grouping workhorses in R.
+
+## The data
+
+For this post, I will use Hosmer and Lemeshow's `birthwt` dataset in the `MASS` package, which describes risk factors for low birthweight in 189 infants (see `help(birthwt)` for more details about these data). In order to make the categories clearer when performing the group operations, I'll convert all of the indicator variables into labelled factors.
+
+```{r prepare_data}
+data(birthwt, package="MASS")
+
+# Turn indicator variables into labelled factors
+birthwt$low <- factor(birthwt$low, labels = c("Above 2.5kgs", "Below 2.5kgs"))
+birthwt$race <- factor(birthwt$race, labels = c("White", "Black", "Other"))
+birthwt$smoke <- factor(birthwt$smoke, labels = c("Non-smoker", "Smoker"))
+birthwt$ht <- factor(birthwt$ht, labels = c("No HT", "HT"))
+birthwt$ui <- factor(birthwt$ui, labels = c("No UI", "UI"))
+```
+
+Now we're ready to get started.
+
+## table and prop.table
+
+One of the most basic group operations are frequency tables, which give us the count of the number of observations in a group. This can be achieved using the `table` function, which we'll use to look at the frequency of `low` below.
+
+```{r table_example_1}
+table(birthwt$low)
+```
+
+`table` also allows us to do a contingency table, which is the crosstab between two categorical variables. Let's have a look at the contingency table of `low` by `smoke`, or the number of babies with low birthweight by their mother's smoking status.
+
+```{r}
+table(birthwt$low, birthwt$smoke)
+```
+
+Often, the proportion of observations is more useful than the raw counts. We can easily convert the values in `table` to proportions by encasing it in the function `prop.table`. As a default, `prop.table` will give you the percentage of the total. However, by entering a second argument we can specify if we want the proportions calculated along the rows (`1`) or the columns (`2`) instead. Let's generate the row proportions for our `low` by `smoke` contingency table:
+
+```{r}
+prop.table(table(birthwt$low, birthwt$smoke), 1)
+```
+
+We can also join tables with the raw count and the proportion using `cbind`. In the second example I have rounded off the results of `prop.table` using the `round` function to make the table a little neater.
+
+```{r}
+cbind(table(birthwt$low, birthwt$smoke), prop.table(table(birthwt$low, birthwt$smoke), 1))
+cbind(table(birthwt$low, birthwt$smoke), round(prop.table(table(birthwt$low, birthwt$smoke), 1), 2))
+```
+
+## aggregate
+
+`table` is great for counts, but what if you want to do something else? `aggregate` is a neat way of extending this functionality, allowing you apply a variety of different statistics by groups. Let's calculate the mean birthweight by smoking status.
+
+```{r}
+aggregate(bwt ~ smoke, data = birthwt, FUN = mean)
+```
+
+We can also group by multiple variables. Here I have added hypertension status (`ht`) as an additional grouping variable.
+
+```{r}
+aggregate(bwt ~ smoke + ht, data = birthwt, FUN = mean)
+```
+
+By using [anonymous functions](https://en.wikipedia.org/wiki/Anonymous_function), you can also generate the exact statistic you apply to your data. Anonymous functions are functions that are executed "on the fly" within R, and don't need the formal set up of being named and called separately. Here I have used an anonymous function to generate the 25th, 50th and 75th percentiles of birthweight by smoking status.
+
+```{r}
+aggregate(bwt ~ smoke, data = birthwt, FUN = function(x) quantile(x, c(.25, .5, .75)))
+```
+
+If you want to get fancy, you can also nest `aggregate` functions within each other, similar to the way you'd use nested [SQL queries](https://en.wikipedia.org/wiki/SQL). Let's first try getting the mean birthweight by maternal age (`age`) and smoking status, and then calculating the minimum of these birthweights by smoking status.
+
+```{r}
+aggregate(bwt ~ smoke, 
+          data = aggregate(bwt ~ age + smoke, data = birthwt, FUN = mean),
+          FUN = min)
+```
+
+You can see I've replaced the `data` argument with an aggregate function which calculates the sample I want to run the second aggregate function over.
+
+## summaryBy
+
+A couple of limitations of `aggregate` are that 1) it cannot do group operations over multiple variables, and 2) it cannot calculate multiple summary statistics unless they can be included in the same anonymous function.
+
+An alternative function that can do both of these things is `summaryBy` in the `doBy` package. For Stata users, this is pretty much the R equivalent of `tabstat` but with a little more flexibility. Let's load in the package, and then calculate the mean of birthweight and maternal age by smoking status:
+
+```{r, message = FALSE}
+library(doBy)
+summaryBy(bwt + age ~ smoke, data = birthwt, FUN = mean)
+```
+
+We can also calculate a range of statistics using `summaryBy`. Let's calculate the minimum, maximum and median of birthweight by smoking status:
+
+```{r}
+summaryBy(bwt ~ smoke, data = birthwt, FUN = c(min, max, median))
+```
+
+Finally, we can combine anonymous functions with regular functions in `summaryBy`, which gives you a lot of power to get the custom summary statistics you want. Here we'll combine min, max, median and the 25th and 75th percentiles:
+
+```{r}
+summaryBy(bwt ~ smoke, data = birthwt,
+          FUN = c(min, max, median, function(x) quantile(x, c(.25, .75))))
+```
+
+You can see that an unfortunate side-effect of introducing anonymous functions into `summaryBy` is that you lose the meaningful column headings you get when using built-in functions. However, you can easily correct this by adding the names of each of the functions to the argument `fun.names`.
+
+```{r}
+summaryBy(bwt ~ smoke, data = birthwt,
+          FUN = c(min, max, median, function(x) quantile(x, c(.25, .75))),
+          fun.names = c("min", "max", "median", "25%", "75%"))
+```
+
+## ddply
+
+The final function for performing group operations is the `ddply` command from the `plyr` package. `plyr` became well known a few years ago as a package that simplified data wrangling in R, and this reputation is definitely well-deserved.
+
+Let's start by running our usual mean birthweight by smoking status operation in `ddply`. The first argument indicates the data to be used, the second is the grouping variable(s), the third tells ddply we are going to run a summary operation, and the final assigns the mean birthweight to a variable.
+
+```{r}
+library(plyr)
+ddply(birthwt, "smoke", summarise,
+      mean.bwt = mean(bwt))
+```
+
+You can see we get the exact same results as when using `aggregate` and `summaryBy` above. 
+
+You might have noticed that allowing us to create a specific variable for the mean of birthweight gives us a lot more flexibility when using `aggregate` or `summaryBy`: instead of running every statistic for every variable we aggregate, we can apply specific statistics to specific variables. Let's have a further look at this, by calculating the the mean of birthweight and the median of age by smoking status:
+
+```{r}
+ddply(birthwt, "smoke", summarise,
+      mean.bwt = mean(bwt),
+      median.age = median(age))
+```
+
+This also gives us the even more flexibility to calculate custom functions that we have when using anonymous functions in `aggregate` and `summaryBy`. This time we will count the number of observations with a low birthweight using subsetting:
+
+```{r}
+ddply(birthwt, "smoke", summarise,
+      sum.low = length(low[low == "Below 2.5kgs"]),
+      mean.bwt = mean(bwt),
+      median.age = median(age))
+```
+
+`ddply` can also group by multiple variables. Here we will group by both `smoke` and `ht`:
+
+```{r}
+ddply(birthwt, c("smoke", "ht"), summarise,
+      sum.low = length(low[low == "Below 2.5kgs"]),
+      mean.bwt = mean(bwt),
+      median.age = median(age))
+```
+
+## Using grouping results with data.frames
+
+In order to extend the utility of group operations even further, you can assign each of these outputs to a new data.frame and merge it with other data.frames. Let's say we want to merge the mean of birthweight by smoking status into the original `birthwt` data. For each of the three functions (`aggregate`, `summaryBy` and `ddply`), we need to assign the output to a new object. Then (as it is already a data.frame), we simply use the `merge` function to join them together.
+
+Let's try this out using `ddply`. You can see that we merge the two data.frames on the grouping variable (`smoke`) as it is the constant between the two data.frames.
+
+```{r}
+agg.birthwt <- ddply(birthwt, "smoke", summarise,
+                     mean.bwt = mean(bwt))
+birthwt <- merge(birthwt, agg.birthwt, by = "smoke")
+```
+
+Let's have a look to see if it worked:
+
+```{r}
+head(birthwt[birthwt$smoke == "Non-smoker",])
+head(birthwt[birthwt$smoke == "Smoker",])
+```
+
+And that's it! You can see that each of these group operations have their own strengths and benefits, ranging from when you need a quick and easy overview of one summary statistic by one variable (`table`, `aggregate`) to more complex and tailored aggregation of the data (`summaryBy`, `ddply`). I also hope this has helped demystify data screening and wrangling, which has a reputation for being a bit of a pain in R.
