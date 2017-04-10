@@ -1,0 +1,29 @@
+---
+title: A crash course in reproducible research in R
+date: 2016-10-13
+comments: false
+tags: R, programming tips, packrat, tidyverse, 
+keywords: rlanguage, 
+---
+
+[A couple of weeks ago]({filename}2016-10-04-reproducible-research-in-python.md), I wrote a post giving you an introduction on [reproducible research](https://en.wikipedia.org/wiki/Reproducibility#Reproducible_research) in Python. While the principles of reproducibility stay the same no matter the language you are using, there are some specific libraries and tools that R has that differ from Python. In this blog post, I'll fill you in on how I conduct a reproducible analysis in R and, like with Python, you'll see how straightforward it is!
+
+## Recap: What is reproducible research?
+
+In the last post, I discussed that I think of an analysis as reproducible if you or another researcher can pick it up and continue to work on it with confidence that you fully understand the past work. In order for this to be possible, I set out that 5 questions about your research need to be answered:  
+
+1. What did I do?  
+2. Why did I do it?  
+3. How did I set up everything at the time of the analysis?  
+4. When did I make changes, and what were they?  
+5. Who needs to access it, and how can I get it to them?  
+
+As I explained in the last post, I use [Git](https://git-scm.com/) and [Github](https://github.com/) (or insert your favourite version control and code-sharing tooling here) to track my changes and share my projects with collaborators, so we won't revisit them in this post. However, R has some specific tools for points 1 to 3, so we'll go over these in the rest of this post.
+
+## What did I do?
+
+As I spoke about in the last post, one of the biggest issues you will face with remembering what you did in your analysis is if you do things manually. As with Python, R has some great libraries 
+
+In the last post, I spoke about how Python has really great libraries (especially [Pandas](http://pandas.pydata.org/)) for 
+
+
