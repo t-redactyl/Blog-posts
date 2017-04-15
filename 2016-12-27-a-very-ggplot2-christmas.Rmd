@@ -6,11 +6,11 @@ tags: R, ggplot2
 keywords: rlanguage, data science, christmas, ggplot2, data visualisation
 ---
 
-About a month ago, [this classic gem](http://is-r.tumblr.com/post/36277968787/happy-thanksgiving-from-isr) popped up in my Twitter feed. For those unable to view the image, it is a Thanksgiving turkey made completely in ggplot2 made by the guys over at [is.R](http://is-r.tumblr.com/). I was so inspired by this plot I decided to see whether I could similarly draw a Christmas tree using only ggplot2:
+About a month ago, [this classic gem](http://is-r.tumblr.com/post/36277968787/happy-thanksgiving-from-isr) popped up in my Twitter feed. For those unable to view the image, it is a Thanksgiving turkey made completely in ggplot2 by the guys over at [is.R](http://is-r.tumblr.com/). I was so inspired by this plot I decided to see whether I could similarly draw a Christmas tree using only ggplot2:
 
 <img src="/figure/christmas_tree_final.png" title="The final product" style="display: block; margin: auto;" />
 
-For those of you who want to jump straight to the final product, [here](https://gist.github.com/t-redactyl/b9067b1d8862d34b42cb49fc4793f284) is the code you'll need to reproduce the chart below.
+For those of you who want to jump straight to the final product, [here](https://gist.github.com/t-redactyl/b9067b1d8862d34b42cb49fc4793f284) is the code you'll need to reproduce the chart above.
 
 For those who want more of a step-by-step guide, I'll talk you through how I built up each layer of the picture.
 
@@ -43,7 +43,7 @@ We can now add some lights to the tree, which I've done by overlaying a scatterp
 
 To do this, I divided the area of the tree into 6 different rectangles, and generated coordinates for the lights within each of these blocks. However, you can see that each of these occupies a different amount of area (e.g., the bottom block is much larger than the top block). In order to make sure the lights were evenly distributed across the tree, I worked out what proportion of the total area each of these rectangles roughly makes up, and used this as a multiple of the total number of lights I wanted. So for example, the bottom block makes up about 35% of the total area, versus 5% for the top block. So if I wanted 50 lights in total, I'd generate 18 lights for the bottom of the tree, and 3 for the top.
 
-Now we have the placement of the lights sorted, let's get them to twinkle! To do this, I generated a third randomly generated variable with values from 1 to 4. We'll use this to control the transparency of each of the dots.
+Now we have the placement of the lights sorted, let's get them to twinkle! To do this, I created a third randomly generated variable with values from 1 to 4. We'll use this to control the transparency of each of the dots.
 
 ```{r, eval = FALSE}
 Desired.Lights <- 50
@@ -103,7 +103,7 @@ Now let's add these to our tree using a weighted scatterplot command:
 tree <- tree + 
           geom_point(data = Baubles, aes(x = Bauble.X, y = Bauble.Y, 
                                          colour = Bauble.Colour, size = Bauble.Size),
-             shape = 16) +
+                     shape = 16) +
           scale_colour_manual(values = c("firebrick2", "gold", "dodgerblue3")) +
           scale_size_area(max_size = 12)
 tree

@@ -9,6 +9,9 @@ ChristmasTree <- read.csv("/Users/jodieburchell/Documents/Blog-posts/Christmas t
 #Christmas$Bauble.Colour <- factor(Christmas$Bauble.Colour, 
 #                                  labels = c("1", "2", "3"))
 
+
+ChristmasTree <- read.csv("https://raw.githubusercontent.com/t-redactyl/Blog-posts/master/Christmas%20tree%20base%20data.csv")
+
 # Generate randomly placed Christmas lights
 Desired.Lights <- 50
 Total.Lights <- sum(round(Desired.Lights * 0.35) + round(Desired.Lights * 0.20) + 
