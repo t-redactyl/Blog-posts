@@ -3,7 +3,7 @@ title: A quick introduction to equivalence relations
 date: 2021-02-15  
 comments: false  
 tags: maths
-keywords: discrete mathematics, mathematical proof, equivalence relations
+keywords: discrete mathematics, mathematical proof, equivalence relations, reflexive, symmetric, transitive, equivalence classes
 ---
 
 An important way of considering a set is how the elements are related to each other. For example, some elements of a set might be less than others, some might be equal, some might belong together because they are even. 
@@ -35,6 +35,43 @@ C_2 = \{2\}, \quad C_3 = \{3, 13, 23, 43, 53, 73, 83\}, \quad C_5 = \{5\},
 C_7 = \{7, 17, 37, 47, 67, 97\}, \quad C_9 = \{19, 29, 59, 79, 89\}
 $$
 
-However, we're not quite there yet. Equivalence classes 
+You can see that each of these subsets are mutally exclusive, and each element within each subset has the same final digit. However, we're not quite there yet. As briefly referenced above, the notation for naming equivalence classes is $\[x\]$, where $\[x\]$ is simply the equivalence class that contains $x$. So instead of calling our equivalence class containing those prime numbers ending in 1 $C_1$, we could call it $\[11\]$. Moreover, there is nothing special about 11. It would be equally valid to call this equivalence class $\[31\]$ or $\[41\]$. As long as the name references one of the elements of the equivalence class, this is fine.
 
 ## A more exotic example
+
+Let's finish up this post by looking at a more in-depth example. I'll first lay out the question, then we'll break it down and start solving it.
+
+Define the relation $\mathrel{R}$ on the set $\mathbb{N}$ by $x\mathrel{R}y$ if and only if there is some $n \in \mathbb{Z}$ such that $x = 2^ny$. Prove that $\mathrel{R}$ is an equivalence relation. What are its equivalence classes?
+
+The first thing we need to note is that our reference set for the relation is $\mathbb{N}$, the set of all natural numbers, and that the relation $\mathrel{R}$ is defined by $x = 2^ny$. This means that for every $x$ in the natural numbers, there is some $y$ that can be multiplied by $2^n$ to get that number. Moreover, the $n$ in $2^n$ comes from the integers $\mathbb{Z}$, so can use any number from negative infinity to positive infinity. Some examples of this relation would be $24 = 2^3 \cdot 3$ and $8 = 2^2 \cdots 32$. So in this problem, we need to find some $n \in \mathbb{Z}$ that will allow us to satisfy each of the properties that make up an equivalence relation.
+
+Starting with reflexivity, we need to show that $x = 2^nx$ for some $n \in \mathbb{Z}$. It's clear that the only $n$ that will make this true is 0, as this will convert $2^n$ to 1, so that $x = 2^0 \cdot x = 1 \cdot x = x$. So when $n = 0$, $\mathrel{R}$ is reflexive.
+
+Turning to symmetry, we want to show that if $x\mathrel{R}y$ is $x = 2^ny$, then $y\mathrel{R}x$ is $y = 2^mx$, where both $n$ and $m$ are integers. Notice that we don't need to use the same integer for $x\mathrel{R}y$ and $y\mathrel{R}x$; it just needs to be some number that meets the criteria for being an integer. To get $y\mathrel{R}x$, we solve $x = 2^ny$ for $y$:
+
+$$
+\begin{aligned}
+x &= 2^ny \\
+2^{-n} \cdot 2^n \cdot y &= 2^{-n}x \\
+2^{n - n}y &= 2^{-n}x \\
+2^0y &= 2^{-n}x \\
+1 \cdot y &= 2^{-n}x \\
+y &= 2^{-n}x
+\end{aligned}
+$$
+
+We now have $-n$ as our integer power for $y\mathrel{R}x$, and as $-n = -1 \cdot n$, it is also an integer. To make the leap to $y = 2^mx$, we simply need to define $m = -n$, and we have our proof. Therefore, $\mathrel{R}$ is also reflexive.
+
+Finally, we need to show that $\mathrel{R}$ is transitive. Here, we assume that $x\mathrel{R}y$ and $y\mathrel{R}z$, and we want to show that $x\mathrel{R}z$. This means that we know that $x = 2^ny$ and $y = 2^mz$, and we want to show that $x = 2^kz$, where $n, m$ and $k$ are all integers. Again, not that these are not the same integers for each of the expressions. To solve this, we can substitute in our definition of $y$ into $x = 2^ny$, and simplify this:
+
+$$
+\begin{aligned}
+x &= 2^ny \\
+&= 2^n(2^mz) \\
+&= 2^{m + n}z
+\end{aligned}
+$$
+
+We now have $m + n$ as our integer power for $x\mathrel{R}z$, which as the sum of two integers is also an integer. Again, all we need to do to get to $x = 2^kz$ is define $k = m + n$. We've now shown that if $x\mathrel{R}y$ and $y\mathrel{R}z$, then $x\mathrel{R}z$, so $\mathrel{R}$ is also transitive.
+
+Finally, to get our equivalence classes on $\mathbb{N}$, we define $n$ as the only integer that satisfied all three properties, 0. When $n = 0$, $x = y$, which is the same as the equality relation. As such every $a \in \mathbb{N}$ forms an equivalence class all by itself, i.e., $\[a\] = \{a\}$. For example, $\[2\] = \{2\}$, and $\[64\] = \{64\}$.
