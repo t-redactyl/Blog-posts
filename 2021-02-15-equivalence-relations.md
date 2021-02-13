@@ -1,5 +1,5 @@
 ---
-title: A quick introduction to mathematical relations  
+title: Mathematical relations and equivalence classes  
 date: 2021-02-15  
 comments: false  
 tags: maths
@@ -31,7 +31,7 @@ and define our relation $x\mathrel{R}y$ as $x$ and $y$ having the same final dig
 
 We first need to check whether this is an equivalence relation. $\mathrel{R}$ is reflexive, because every number has the same final digit as itself. It's also symmetric, as if $x$ has the same final digit as $y$, then $y$ has the same final digit as $x$. Finally, it's transitive, as if $x$ has the same final digit as $y$, and $y$ has the same final digit as $z$, then $x$ of course has the same final digit as $z$. All three properties being satisfied, we know that $\mathrel{R}$ is an equivalence relation.
 
-Let's start defining the equivalence classes. We'll start with all of the pairs that end with 1. Our relation is $P_1 = \{(11, 31), (11, 41), (11, 61), (11, 71), (31, 41), \ldots, (61, 71)\}$, and the corresponding equivalence class is $C_1 = \{11, 31, 41, 61, 71\}$, or the subset of the elements of our reference set that are $\mathrel{R}$-related. There are six possible digits that these prime numbers can end in, and we can make equivalence classes for them all:
+Let's start defining the equivalence classes. We'll start with all of the pairs that end with 1. Our relation is $P_1 = \{(11, 31), (11, 41), (11, 61), (11, 71), (31, 41), \ldots, (71, 61)\}$, and the corresponding equivalence class is $C_1 = \{11, 31, 41, 61, 71\}$, or the subset of the elements of our reference set that are $\mathrel{R}$-related. There are six possible digits that these prime numbers can end in, and we can make equivalence classes for them all:
 
 $$C_2 = \{2\}, \quad C_3 = \{3, 13, 23, 43, 53, 73, 83\}, \quad C_5 = \{5\},$$
 $$C_7 = \{7, 17, 37, 47, 67, 97\}, \quad C_9 = \{19, 29, 59, 79, 89\}$$
