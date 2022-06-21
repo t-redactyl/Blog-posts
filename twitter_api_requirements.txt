@@ -29,7 +29,7 @@ nbconvert==5.0.0
 nbformat==4.2.0
 nltk==3.2.2
 notebook==4.3.1
-numpy==1.11.3
+numpy==1.22.0
 oauthlib==2.0.1
 pandas==0.19.2
 pandocfilters==1.4.1
